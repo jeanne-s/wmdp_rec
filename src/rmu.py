@@ -60,7 +60,11 @@ class BaseRMU:
                     x_forget, 
                     control_vector):
 
-        inputs = self.tokenizer(x_forget, return_tensors="pt", padding=True, truncation=True, max_length =self.args.max_length) 
+        inputs = self.tokenizer(x_forget, 
+                                return_tensors="pt", 
+                                padding=True, 
+                                truncation=True, 
+                                max_length=self.args.max_length) 
         activations = self.forward()
         
         return torch.nn.functional.mse_loss(activations, control_vector)
@@ -68,7 +72,16 @@ class BaseRMU:
 
     def retain_loss(self, 
                     x_retain):
-        pass
+        inputs = self.tokenizer(x_retain,
+                                return_tensors="pt", 
+                                padding=True, 
+                                truncation=True,
+                                max_length=self.args.max_length)
+        
+        updated_model_activations = self.forward(self.updated_model, inputs) #other_args
+        frozen_model_activations = self.forward(self.frozen_model, inputs) #other_args
+
+        return torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
 
 
     def forward():
