@@ -1,3 +1,3 @@
-# wmdp_rec
+# The WMDP Benchmark: Measuring and Reducing Malicious Use With Unlearning 
 
-This is a replication of the WMDP benchmark code, for unlearning.
+Replication of the [WMDP paper](https://www.wmdp.ai/). Work in progress.
