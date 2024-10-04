@@ -1,0 +1,17 @@
+args:
+  model_name: "HuggingFaceH4/zephyr-7b-beta"
+  num_epochs: 1 
+  num_batches: 150  # to check
+  alpha: 1200
+  forget_dataset_list:
+    - "bio-forget-corpus"
+  retain_dataset_list: 
+    - "retain_dataset"
+  learning_rate: 5e-5
+  alpha: #TODO
+  optimizer_param_layer_id: 
+    - 6
+  layer_ids:
+    - 5
+    - 6
+    - 7

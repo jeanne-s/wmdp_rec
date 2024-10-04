@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from transformers import AdamW, AutoTokenizer, AutoModelForCausalLM
 import tqdm as tqdm
+from dataset import JSONLDataset
+from model import Model
 
  
 
@@ -9,7 +11,7 @@ class BaseRMU:
     
     def __init__(self, args):
         self.args = args
-        #updated_model, frozen_model, retain_dataset, forget_dataset_list: list[str], c, alpha
+        #updated_model, frozen_model, retain_dataset, forget_dataset_list: list[str], alpha
     
 
     def setup(self):
@@ -17,9 +19,10 @@ class BaseRMU:
         This method sets up the tokenizer and optimizer for the model.
         """
         self.tokenizer = self.load_tokenizer()
-        self.updated_model, self.frozen_model = self.load_models()
-        self.optimizer = self.create_optimizer() 
+        self.updated_model, self.frozen_model = load_models()
+        self.optimizer = self.load_optimizer() 
         self.control_vector_list = self.create_control_vector_list()
+        self.retain_datasets, self.forget_datasets = self.setup_datasets()
         
 
     def load_tokenizer(self):
@@ -28,15 +31,23 @@ class BaseRMU:
                                                   use_fast=False)
         return tokenizer 
 
-
+    
     def load_models(self):
-        updated_model = AutoModelForCausalLM.from_pretrained(self.args.model_name)
-        frozen_model = AutoModelForCausalLM.from_pretrained(self.args.model_name)
+        updated_model = Model(model_name=self.args.model_name)
+        frozen_model = Model(model_name=self.args.model_name)
         return updated_model, frozen_model
 
 
-    def create_optimizer(self):
-        optimizer = AdamW()#TODO
+    def load_optimizer(self): # TODO: Unsure about that function
+        optimizer_param_layer_id = set(self.args.optimizer_param_layer_id)
+        params = [
+            p
+            for layer_id in layer_ids
+            if 0 <= layer_id < self.updated_model.n_layers()
+            for i, p in enumerate(self.updated_model.get_layer(layer_id).parameters())
+            if i in optimizer_param_layer_id
+        ]
+        optimizer = AdamW(params, lr=self.args.learning_rate) 
         return optimizer
     
 
@@ -54,6 +65,31 @@ class BaseRMU:
             normalized_control_vector = control_vector / torch.norm(control_vector)
             control_vector_list.append(normalized_control_vector)
         return control_vector_list
+
+    
+    def setup_datasets(self):
+        retain_datasets = []
+        for dataset_id, retain_dataset in enumerate(self.args.retain_dataset_list):
+            retain_datasets.append(
+                JSONLDataset(dataset_name=retain_dataset,
+                             tokenizer=self.tokenizer)
+            )
+
+        forget_datasets = []
+        for dataset_id, forget_dataset_name in enumerate(self.args.forget_dataset_list):
+            forget_datasets.append(
+                JSONLDataset(dataset_name=forget_dataset_name,
+                             tokenizer=self.tokenizer)
+            )
+
+        # If the length of retain_datasets is smaller than forget_datasets, we have to extend it for the 
+        # finetuning loop to function
+        if len(retain_datasets) < len(forget_datasets):
+            retain_datasets *= (len(forget_datasets) // len(retain_datasets))  # Repeat the list
+            retain_datasets += retain_datasets[:len(forget_datasets) % len(retain_datasets)]  # Add remaining items if needed
+        
+        assert len(retain_datasets) == len(forget_datasets)
+        return retain_datasets, forget_datasets
 
 
     def forget_loss(self, 
@@ -89,17 +125,23 @@ class BaseRMU:
         pass
 
 
-    def finetune():
+    def finetune(self):
         """Main training loop."""
         
-        for dataset_id, forget_dataset in enumerate(self.args.forget_dataset_list):
-            for epoch in range(self.args.num_epochs):
+        for epoch in range(self.args.num_epochs):
+            with tqdm.tqdm(total=self.args.num_batches) as pbar:
                 for batch_id in range(self.args.num_batches):
                 
-                    x_forget = #get_sample()
-                    x_retain = 
+                    dataset_id = batch_id % len(self.forget_datasets) # TODO: would be great if we could proof-read that
+                    element_id = batch_id // len(self.forget_datasets)
+                    
+                    x_forget = self.forget_datasets[dataset_id][element_id]['input_ids']
+                    x_retain = self.retain_datasets[dataset_id][element_id]['input_ids']
+                    control_vector = self.control_vector_list[dataset_id]
             
-                    l_forget = self.forget_loss(x_forget=x_forget, control_vector=self.control_vector_list[dataset_id])
+                    l_forget = self.forget_loss(x_forget=x_forget, control_vector=control_vector)
                     l_retain = self.retain_loss(x_retain=x_retain)
                     full_loss = l_forget + self.args.alpha * l_retain
+
+                    # gradient descent ...
 
