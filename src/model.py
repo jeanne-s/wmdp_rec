@@ -15,15 +15,6 @@ class Model:
         return AutoModelForCausalLM.from_pretrained(self.model_name)
 
 
-    def __module_str__(self): # TODO: maybe useless
-        model_name = self.model_name
-        if "zephyr" in model_name:
-            module_str = f"{model_name}.model.layers"
-        if "Mixtral" in model_name:
-            module_str = f"{model_name}.model.layers"
-        return module_str
-
-
     def get_all_layers(self):
         if hasattr(self.model, 'transformer'):  # For models like GPT-2
             layers = self.model.transformer.h

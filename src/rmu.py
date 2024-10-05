@@ -1,6 +1,5 @@
-import numpy as np
 import torch
-from transformers import AdamW, AutoTokenizer, AutoModelForCausalLM
+from transformers import AdamW, AutoTokenizer
 import tqdm as tqdm
 from dataset import JSONLDataset
 from model import Model
@@ -11,7 +10,6 @@ class BaseRMU:
     
     def __init__(self, args):
         self.args = args
-        #updated_model, frozen_model, retain_dataset, forget_dataset_list: list[str], alpha
     
 
     def setup(self):
@@ -132,7 +130,7 @@ class BaseRMU:
             with tqdm.tqdm(total=self.args.num_batches) as pbar:
                 for batch_id in range(self.args.num_batches):
                 
-                    dataset_id = batch_id % len(self.forget_datasets) # TODO: would be great if we could proof-read that
+                    dataset_id = batch_id % len(self.forget_datasets)
                     element_id = batch_id // len(self.forget_datasets)
                     
                     x_forget = self.forget_datasets[dataset_id][element_id]['input_ids']
@@ -142,6 +140,6 @@ class BaseRMU:
                     l_forget = self.forget_loss(x_forget=x_forget, control_vector=control_vector)
                     l_retain = self.retain_loss(x_retain=x_retain)
                     full_loss = l_forget + self.args.alpha * l_retain
-
-                    # gradient descent ...
+  
+                    # TODO
 
