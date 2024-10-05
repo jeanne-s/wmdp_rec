@@ -4,7 +4,6 @@ import tqdm as tqdm
 from dataset import JSONLDataset
 from model import Model
 
- 
 
 class BaseRMU: 
     
@@ -17,7 +16,7 @@ class BaseRMU:
         This method sets up the tokenizer and optimizer for the model.
         """
         self.tokenizer = self.load_tokenizer()
-        self.updated_model, self.frozen_model = load_models()
+        self.updated_model, self.frozen_model = self.load_models()
         self.optimizer = self.load_optimizer() 
         self.control_vector_list = self.create_control_vector_list()
         self.retain_datasets, self.forget_datasets = self.setup_datasets()
@@ -36,11 +35,11 @@ class BaseRMU:
         return updated_model, frozen_model
 
 
-    def load_optimizer(self): # TODO: Unsure about that function
+    def load_optimizer(self):
         optimizer_param_layer_id = set(self.args.optimizer_param_layer_id)
         params = [
             p
-            for layer_id in layer_ids
+            for layer_id in self.args.layer_ids
             if 0 <= layer_id < self.updated_model.n_layers()
             for i, p in enumerate(self.updated_model.get_layer(layer_id).parameters())
             if i in optimizer_param_layer_id
