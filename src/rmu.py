@@ -1,8 +1,10 @@
+import argparse
 import torch
 from transformers import AdamW, AutoTokenizer
 import tqdm as tqdm
 from dataset import JSONLDataset
 from model import Model
+from utils import load_yaml_config
 
 
 class BaseRMU: 
@@ -39,7 +41,7 @@ class BaseRMU:
         optimizer_param_layer_id = set(self.args.optimizer_param_layer_id)
         params = [
             p
-            for layer_id in self.args.layer_ids
+            for layer_id in self.args.update_layer_ids
             if 0 <= layer_id < self.updated_model.n_layers()
             for i, p in enumerate(self.updated_model.get_layer(layer_id).parameters())
             if i in optimizer_param_layer_id
@@ -91,14 +93,13 @@ class BaseRMU:
     
     def forget_loss(self, 
                     x_forget, 
-                    layer_id:int,
                     control_vector):
         """Calculates the forget loss.
         Args:
             x_forget (torch.Tensor): The input tokens.
         """ 
         updated_model_activations = self.updated_model.forward(input_ids=x_forget, 
-                                                               layer_id=layer_id,
+                                                               layer_id=self.args.forget_layer_id,
                                                                no_grad=False)
         L_f = x_forget.shape[0]
         
@@ -106,18 +107,16 @@ class BaseRMU:
     
 
     def retain_loss(self, 
-                    x_retain,
-                    layer_id: int
-    ):
+                    x_retain):
         """Calculates the retain loss. 
         Args:
             x_retain (torch.Tensor): The input tokens.
         """
         updated_model_activations = self.updated_model.forward(input_ids=x_retain, 
-                                                               layer_id=layer_id,
+                                                               layer_id=self.args.forget_layer_id,
                                                                no_grad=False)
         frozen_model_activations = self.frozen_model.forward(input_ids=x_retain,
-                                                             layer_id=layer_id, 
+                                                             layer_id=self.args.forget_layer_id, 
                                                              no_grad=True)
         L_r = x_retain.shape[0]
         
@@ -144,6 +143,23 @@ class BaseRMU:
                     l_forget = self.forget_loss(x_forget=x_forget, control_vector=control_vector)
                     l_retain = self.retain_loss(x_retain=x_retain)
                     full_loss = l_forget + self.args.alpha * l_retain
-  
-                    # TODO
 
+                    self.optimizer.zero_grad()
+                    full_loss.backward() 
+                    self.optimizer.step()
+
+                    print(f"Step {batch_id}: loss={full_loss.item():.4f}, forget_loss={l_forget.item():.4f}, retain_loss={l_retain.item():.4f}")
+
+        self.updated_model.save_model(path=self.args.updated_model_path)
+        return    
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="RMU Training")
+    parser.add_argument('--config_file', type=str, help='Path to the YAML config file')
+    args = parser.parse_args()
+    
+    config = load_yaml_config(file_path=args.config_file)
+    rmu = BaseRMU(config)
+    rmu.setup()
+    rmu.finetune()

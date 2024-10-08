@@ -28,7 +28,7 @@ class JSONLDataset(Dataset):
         data = []
         with open(file_path, 'r') as f:
             for line in f:
-                json_line = json.loads(line.strip())  # Each line is a JSON object
+                json_line = json.loads(line.strip())
                 data.append(json_line)
         return data
 
@@ -57,7 +57,6 @@ class JSONLDataset(Dataset):
                                 return_tensors="pt",
                                 padding=True,
                                 truncation=False)
-        # TODO: should we move the tokenization part somewhere else?
         
         return {
             "input_ids": inputs["input_ids"].squeeze(0), # Squeeze to remove batch dim

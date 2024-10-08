@@ -61,3 +61,10 @@ class Model:
 
         hook_handle.remove()
         return activations
+    
+
+    def save_model(self, 
+                   path: str
+    ):
+        self.model.save_pretrained(path)
+        return path

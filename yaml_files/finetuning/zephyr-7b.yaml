@@ -1,7 +1,7 @@
 args:
   model_name: "HuggingFaceH4/zephyr-7b-beta"
   num_epochs: 1 
-  num_batches: 150  # to check
+  num_batches: 150
   alpha: 1200
   forget_dataset_list:
     - "bio-forget-corpus"
@@ -9,10 +9,12 @@ args:
     - "retain_dataset"
   learning_rate: 5e-5
   steering_coefficient: 6.5
-  alpha: #TODO
+  alpha: 1200.0
+  forget_layer_id: 7
   optimizer_param_layer_id: 
     - 6
-  layer_ids:
+  update_layer_ids:
     - 5
     - 6
     - 7
+  updated_model_path: "models/zephyr-7b-beta_bio-forget-corpus"
