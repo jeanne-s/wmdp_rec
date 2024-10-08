@@ -8,6 +8,7 @@ args:
   retain_dataset_list: 
     - "retain_dataset"
   learning_rate: 5e-5
+  steering_coefficient: 6.5
   alpha: #TODO
   optimizer_param_layer_id: 
     - 6

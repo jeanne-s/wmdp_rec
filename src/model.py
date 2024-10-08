@@ -16,6 +16,7 @@ class Model:
 
 
     def get_all_layers(self):
+        # TODO: dictionary
         if hasattr(self.model, 'transformer'):  # For models like GPT-2
             layers = self.model.transformer.h
         elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For specific models (e.g., zephyr, Mixtral)
@@ -40,5 +41,23 @@ class Model:
         return len(layers)
 
     
-    def get_activations(self):
-        pass
+    def forward(self, 
+                input_ids, 
+                layer_id: int,
+                no_grad=True
+    ):
+        """Forward pass and returns the activations of the specified layer."""
+        activations = []
+        def hook_function(module, input, output):
+            activations.append(output[0] if isinstance(output, tuple) else output)
+
+        hook_handle = self.get_layer(layer_id).register_forward_hook(hook_function)
+        
+        if no_grad:
+            with torch.no_grad():
+                _ = self.model(**input_ids)
+        else:
+            _ = self.model(**input_ids)
+
+        hook_handle.remove()
+        return activations

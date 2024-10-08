@@ -54,12 +54,12 @@ class JSONLDataset(Dataset):
         divmod = item['doi']
         
         inputs = self.tokenizer(text, 
-                                return_tensors="pt", 
+                                return_tensors="pt",
+                                padding=True,
                                 truncation=False)
         # TODO: should we move the tokenization part somewhere else?
         
         return {
-            "input_ids": inputs["input_ids"].squeeze(0),  # Squeeze to remove batch dim
-            #"text": text,
+            "input_ids": inputs["input_ids"].squeeze(0), # Squeeze to remove batch dim
             "attention_mask": inputs["attention_mask"].squeeze(0),
         }

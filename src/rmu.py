@@ -88,38 +88,40 @@ class BaseRMU:
         assert len(retain_datasets) == len(forget_datasets)
         return retain_datasets, forget_datasets
 
-
+    
     def forget_loss(self, 
                     x_forget, 
+                    layer_id:int,
                     control_vector):
-
-        inputs = self.tokenizer(x_forget, 
-                                return_tensors="pt", 
-                                padding=True, 
-                                truncation=True, 
-                                max_length=self.args.max_length) 
-        activations = self.forward()
+        """Calculates the forget loss.
+        Args:
+            x_forget (torch.Tensor): The input tokens.
+        """ 
+        updated_model_activations = self.updated_model.forward(input_ids=x_forget, 
+                                                               layer_id=layer_id,
+                                                               no_grad=False)
+        L_f = x_forget.shape[0]
         
-        return torch.nn.functional.mse_loss(activations, control_vector)
+        return 1/L_f * torch.nn.functional.mse_loss(updated_model_activations, control_vector * self.args.steering_coefficient)
     
 
     def retain_loss(self, 
-                    x_retain):
-        inputs = self.tokenizer(x_retain,
-                                return_tensors="pt", 
-                                padding=True, 
-                                truncation=True,
-                                max_length=self.args.max_length)
+                    x_retain,
+                    layer_id: int
+    ):
+        """Calculates the retain loss. 
+        Args:
+            x_retain (torch.Tensor): The input tokens.
+        """
+        updated_model_activations = self.updated_model.forward(input_ids=x_retain, 
+                                                               layer_id=layer_id,
+                                                               no_grad=False)
+        frozen_model_activations = self.frozen_model.forward(input_ids=x_retain,
+                                                             layer_id=layer_id, 
+                                                             no_grad=True)
+        L_r = x_retain.shape[0]
         
-        updated_model_activations = self.forward(self.updated_model, inputs) #other_args
-        frozen_model_activations = self.forward(self.frozen_model, inputs) #other_args
-
-        return torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
-
-
-    def forward():
-        """Forward pass"""
-        pass
+        return 1/L_r * torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
 
 
     def finetune(self):
@@ -129,6 +131,9 @@ class BaseRMU:
             with tqdm.tqdm(total=self.args.num_batches) as pbar:
                 for batch_id in range(self.args.num_batches):
                 
+                    # To unlearn multiple datasets, we interleave the gradient updates
+                    # i.e. we update model weights on the first forget dataset, then on 
+                    # the second one, and repeat
                     dataset_id = batch_id % len(self.forget_datasets)
                     element_id = batch_id // len(self.forget_datasets)
                     
