@@ -1,6 +1,8 @@
 import torch
 from transformers import AutoModelForCausalLM
-
+import os
+import yaml
+import shutil
 
 class Model:
 
@@ -64,7 +66,40 @@ class Model:
     
 
     def save_model(self, 
-                   path: str
+                   path: str,
+                   config_path: str = None
     ):
-        self.model.save_pretrained(path)
-        return path
+        """
+        Saves the model to the specified path. If a folder with the model's name already exists,
+        it creates a subfolder with an incremental number (e.g., 00, 01, etc.). The model is saved
+        in the subfolder along with a configuration file in YAML format.
+
+        Args:
+            path (str): The base path where the model will be saved.
+            config_path (str): The path to the configuration file (YAML) used to run rmu.py.
+        """
+        model_dir = os.path.join(path, self.model_name)
+
+        # If the folder exists, create subfolders with incremental numbers (e.g., 00, 01, etc.)
+        if os.path.exists(model_dir):
+            subfolders = [f for f in os.listdir(model_dir) if os.path.isdir(os.path.join(model_dir, f))]
+            numbers = [int(f) for f in subfolders if f.isdigit()]
+            new_subfolder_num = f"{max(numbers) + 1:02}" if numbers else "00"
+        else:
+            # If folder doesn't exist, create the main folder and start with subfolder 00
+            os.makedirs(model_dir)
+            new_subfolder_num = "00"
+
+        # Create the subfolder path
+        save_path = os.path.join(model_dir, new_subfolder_num)
+        os.makedirs(save_path, exist_ok=True)
+
+        # Save the model
+        self.model.save_pretrained(os.path.join(save_path, "model.pt"))
+
+        # Copy the external config file (used in run.py) to the save directory, if provided
+        if config_path:
+            config_destination = os.path.join(save_path, "config.yaml")
+            shutil.copy(config_path, config_destination)
+
+        return

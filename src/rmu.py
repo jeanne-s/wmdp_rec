@@ -150,7 +150,7 @@ class BaseRMU:
 
                     print(f"Step {batch_id}: loss={full_loss.item():.4f}, forget_loss={l_forget.item():.4f}, retain_loss={l_retain.item():.4f}")
 
-        self.updated_model.save_model(path=self.args.updated_model_path)
+        self.updated_model.save_model(path=self.args.updated_model_path, config_path=self.args.config_file)
         return    
 
 
@@ -160,6 +160,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     config = load_yaml_config(file_path=args.config_file)
+    config['config_file'] = args.config_file
     rmu = BaseRMU(config)
     rmu.setup()
     rmu.finetune()

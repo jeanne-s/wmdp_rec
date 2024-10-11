@@ -12,7 +12,7 @@ class JSONLDataset(Dataset):
     def __init__(self,
                  dataset_name: str,
                  tokenizer: AutoTokenizer,
-                 dataset_folder: str = '../datasets/'): # TODO: that argument could be better handled
+                 dataset_folder: str = '../datasets/'):
         self.dataset_name = dataset_name
         self.tokenizer = tokenizer
         self.dataset_folder = dataset_folder

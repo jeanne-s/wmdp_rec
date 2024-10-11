@@ -17,4 +17,4 @@ args:
     - 5
     - 6
     - 7
-  updated_model_path: "models/zephyr-7b-beta_bio-forget-corpus"
+  updated_model_path: "models/"
