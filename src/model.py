@@ -14,7 +14,7 @@ class Model:
 
 
     def load_model(self):
-        return AutoModelForCausalLM.from_pretrained(self.model_name)
+        return AutoModelForCausalLM.from_pretrained(self.model_name, device_map='cuda', torch_dtype=torch.float16)
 
 
     def get_all_layers(self):
@@ -57,9 +57,9 @@ class Model:
         
         if no_grad:
             with torch.no_grad():
-                _ = self.model(**input_ids)
+                _ = self.model(input_ids)
         else:
-            _ = self.model(**input_ids)
+            _ = self.model(input_ids)
 
         hook_handle.remove()
         return activations

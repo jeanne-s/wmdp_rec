@@ -34,7 +34,9 @@ class BaseRMU:
     
     def load_models(self):
         updated_model = Model(model_name=self.args.model_name)
+        updated_model.model.to(self.device)
         frozen_model = Model(model_name=self.args.model_name)
+        frozen_model.model.to(self.device)
         return updated_model, frozen_model
 
 
@@ -43,7 +45,7 @@ class BaseRMU:
         params = [
             p
             for layer_id in self.args.update_layer_ids
-            if 0 <= layer_id < self.updated_model.n_layers()
+            if 0 <= layer_id < len(self.updated_model.n_layers())
             for i, p in enumerate(self.updated_model.get_layer(layer_id).parameters())
             if i in optimizer_param_layer_id
         ]
@@ -57,9 +59,6 @@ class BaseRMU:
         Corresponds to u in the paper. One unit vector is created per forget dataset; 
         for each forget dataset u is held fixed throughout training.
         """
-        #print(f"Type of self.updated_model: {type(self.updated_model)}")
-        #print(f"Attributes of self.updated_model: {dir(self.updated_model)}")
-    
         control_vector_list = []
         for _ in range(len(self.args.forget_dataset_list)):
             
@@ -164,7 +163,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     config = load_yaml_config(file_path=args.config_file)
-    #config['config_file'] = args.config_file
     setattr(config, 'config_file', args.config_file)
     rmu = BaseRMU(config)
     rmu.setup()
