@@ -17,6 +17,7 @@ class BaseRMU:
         """
         This method sets up the tokenizer and optimizer for the model.
         """
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = self.load_tokenizer()
         self.updated_model, self.frozen_model = self.load_models()
         self.optimizer = self.load_optimizer() 
@@ -46,7 +47,7 @@ class BaseRMU:
             for i, p in enumerate(self.updated_model.get_layer(layer_id).parameters())
             if i in optimizer_param_layer_id
         ]
-        optimizer = AdamW(params, lr=self.args.learning_rate) 
+        optimizer = AdamW(params, lr=float(self.args.learning_rate)) 
         return optimizer
     
 
@@ -56,11 +57,14 @@ class BaseRMU:
         Corresponds to u in the paper. One unit vector is created per forget dataset; 
         for each forget dataset u is held fixed throughout training.
         """
+        #print(f"Type of self.updated_model: {type(self.updated_model)}")
+        #print(f"Attributes of self.updated_model: {dir(self.updated_model)}")
+    
         control_vector_list = []
-        for i in range(len(self.args.forget_dataset_list)):
-            control_vector = torch.rand(1,1, self.args.updated_model.config.hidden_size,
-                                        dtype=self.args.updated_model.dtype,
-                                        device=self.args.updated_model.device)
+        for _ in range(len(self.args.forget_dataset_list)):
+            
+            control_vector = torch.rand(1, 1, self.updated_model.model.config.hidden_size,
+                                        device=self.device)
             normalized_control_vector = control_vector / torch.norm(control_vector)
             control_vector_list.append(normalized_control_vector)
         return control_vector_list
@@ -160,7 +164,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     config = load_yaml_config(file_path=args.config_file)
-    config['config_file'] = args.config_file
+    #config['config_file'] = args.config_file
+    setattr(config, 'config_file', args.config_file)
     rmu = BaseRMU(config)
     rmu.setup()
     rmu.finetune()

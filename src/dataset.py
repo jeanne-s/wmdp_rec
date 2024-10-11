@@ -12,24 +12,44 @@ class JSONLDataset(Dataset):
     def __init__(self,
                  dataset_name: str,
                  tokenizer: AutoTokenizer,
-                 dataset_folder: str = '../datasets/'):
+                 dataset_folder: str = '../wmdp/data/'):
         self.dataset_name = dataset_name
         self.tokenizer = tokenizer
         self.dataset_folder = dataset_folder
         self.data = self.load_jsonl()
 
 
+    # def load_jsonl(self):
+    #     """Loads data from the .jsonl file."""
+    #     file_path = os.path.join(self.dataset_folder, self.dataset_name)
+    #     if not os.path.exists(file_path):
+    #         raise FileNotFoundError(f"The file {file_path} does not exist.")
+
+    #     """data = []
+    #     with open(file_path, 'r') as f:
+    #         for line in f:
+    #             json_line = json.loads(line.strip())
+    #             data.append(json_line)"""
+    #     with open(file_path, 'r') as file:
+    #         data = json.load(file)
+
+    #     return data
+
     def load_jsonl(self):
-        """Loads data from the .jsonl file into memory."""
+        min_len=50
+        batch_size=4
         file_path = os.path.join(self.dataset_folder, self.dataset_name)
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"The file {file_path} does not exist.")
-
         data = []
-        with open(file_path, 'r') as f:
-            for line in f:
-                json_line = json.loads(line.strip())
-                data.append(json_line)
+        for line in open(f"data/{file_path}.jsonl", "r"):
+            if "bio-forget-corpus" in self.dataset_name:
+                raw_text = json.loads(line)['text']
+            else:
+                raw_text = line
+            if len(raw_text) > min_len:
+                data.append(str(raw_text))
+        data = [data[i:i + batch_size] for i in range(0, len(data), batch_size)]
         return data
 
 
@@ -47,13 +67,19 @@ class JSONLDataset(Dataset):
             dict: A dictionary containing tokenized input and the label.
         """
         item = self.data[idx]
+        print(f"Raw item: {item}")  # Add this line
+        try:
+            if isinstance(item, str):
+                # If the item is a string, parse it as JSON
+                item = json.loads(item)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON at index {idx}")
+            print(f"Raw item: {item}")
+            print(f"Error details: {str(e)}")
+            raise  # Re-raise the exception after printing debug info
         
-        title = item['title']
-        abstract = item['abstract']
-        text = item['text']
-        divmod = item['doi']
-        
-        inputs = self.tokenizer(text, 
+        #text = item['text']        
+        inputs = self.tokenizer(item, 
                                 return_tensors="pt",
                                 padding=True,
                                 truncation=False)

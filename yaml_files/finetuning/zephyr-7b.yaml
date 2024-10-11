@@ -4,9 +4,9 @@ args:
   num_batches: 150
   alpha: 1200
   forget_dataset_list:
-    - "bio-forget-corpus"
+    - "bio-forget-corpus.jsonl"
   retain_dataset_list: 
-    - "retain_dataset"
+    - "bio-retain-corpus.jsonl"
   learning_rate: 5e-5
   steering_coefficient: 6.5
   alpha: 1200.0
