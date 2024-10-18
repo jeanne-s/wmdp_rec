@@ -34,9 +34,9 @@ class BaseRMU:
     
     def load_models(self):
         updated_model = Model(model_name=self.args.model_name)
-        updated_model.model.to(self.device)
+        # updated_model.model.to(self.device)
         frozen_model = Model(model_name=self.args.model_name)
-        frozen_model.model.to(self.device)
+        # frozen_model.model.to(self.device)
         return updated_model, frozen_model
 
 
@@ -45,7 +45,7 @@ class BaseRMU:
         params = [
             p
             for layer_id in self.args.update_layer_ids
-            if 0 <= layer_id < len(self.updated_model.n_layers())
+            if 0 <= layer_id < self.updated_model.n_layers()
             for i, p in enumerate(self.updated_model.get_layer(layer_id).parameters())
             if i in optimizer_param_layer_id
         ]

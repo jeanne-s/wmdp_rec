@@ -11,10 +11,24 @@ class Model:
     ):
         self.model_name = model_name
         self.model = self.load_model()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
     def load_model(self):
-        return AutoModelForCausalLM.from_pretrained(self.model_name, device_map='cuda', torch_dtype=torch.float16)
+        # return AutoModelForCausalLM.from_pretrained(self.model_name, device_map='cuda', torch_dtype=torch.float16)
+
+        if torch.cuda.is_available():
+            return AutoModelForCausalLM.from_pretrained(
+                self.model_name, 
+                device_map='auto',  # 'auto' will use all available GPUs
+                torch_dtype=torch.float16
+            )
+        else:
+            return AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                device_map='cpu',
+                torch_dtype=torch.float32  # Use float32 for CPU
+            )
 
 
     def get_all_layers(self):
@@ -51,7 +65,7 @@ class Model:
         """Forward pass and returns the activations of the specified layer."""
         activations = []
         def hook_function(module, input, output):
-            activations.append(output[0] if isinstance(output, tuple) else output)
+            activations.append(output[0].to(self.device) if isinstance(output, tuple) else output.to(self.device))
 
         hook_handle = self.get_layer(layer_id).register_forward_hook(hook_function)
         
