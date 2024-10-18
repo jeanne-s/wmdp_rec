@@ -1,7 +1,8 @@
 import argparse
 import lm_eval
-from lm_eval.utils import handle_non_serializable
+#from lm_eval.utils import handle_non_serializable
 import json
+import os
 
 # TODO: handle local and non-local models
 
@@ -14,12 +15,12 @@ class BenchmarkModels:
     def benchmark(self):
         results = lm_eval.simple_evaluate(
             model="hf",
-            model_args=f"pretrained={self.model_name}",
-            tasks=self.benchmarks,
+            model_args=f"pretrained={self.args.model_name}",
+            tasks=self.args.benchmarks,
             log_samples=False,
             batch_size=self.args.batch_size
         )
-        results['results']['model_name'] = self.model_name
+        results['results']['model_name'] = self.args.model_name
         return results
 
 
@@ -53,7 +54,7 @@ class BenchmarkModels:
 
         # Save the results to the output file
         with open(output_path, "w") as fp:
-            json.dump(results, fp, indent=2, default=handle_non_serializable, ensure_ascii=False)
+            json.dump(results, fp, indent=2, ensure_ascii=False)
 
         print(f"Benchmark results saved to {output_path}")
 
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("--config_file", type=str, required=True, help="Path to the YAML config file")
     args = parser.parse_args()
 
-    benchmarker = BenchmarkModels(args.model)
+    benchmarker = BenchmarkModels(args=args)
     
     results = benchmarker.benchmark()
     benchmarker.save_results(results)

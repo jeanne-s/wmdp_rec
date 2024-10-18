@@ -15,8 +15,6 @@ class Model:
 
 
     def load_model(self):
-        # return AutoModelForCausalLM.from_pretrained(self.model_name, device_map='cuda', torch_dtype=torch.float16)
-
         if torch.cuda.is_available():
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name, 
@@ -32,7 +30,6 @@ class Model:
 
 
     def get_all_layers(self):
-        # TODO: dictionary
         if hasattr(self.model, 'transformer'):  # For models like GPT-2
             layers = self.model.transformer.h
         elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For specific models (e.g., zephyr, Mixtral)

@@ -1,5 +1,3 @@
-# TODO: we should check that there is no truncation problem
-
 import json
 import torch
 from torch.utils.data import Dataset

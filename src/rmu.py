@@ -32,11 +32,19 @@ class BaseRMU:
         return tokenizer 
 
     
+    # def load_models(self):
+    #     updated_model = Model(model_name=self.args.model_name)
+    #     # updated_model.model.to(self.device)
+    #     frozen_model = Model(model_name=self.args.model_name)
+    #     # frozen_model.model.to(self.device)
+    #     return updated_model, frozen_model
+
     def load_models(self):
-        updated_model = Model(model_name=self.args.model_name)
-        # updated_model.model.to(self.device)
-        frozen_model = Model(model_name=self.args.model_name)
-        # frozen_model.model.to(self.device)
+        updated_model = Model(model_name=self.args.model_name)#.model.to(self.device)
+        frozen_model = updated_model  # Use the same model instance for both
+        frozen_model.model.eval()  # Set the frozen model to evaluation mode
+        for param in frozen_model.model.model.parameters():
+            param.requires_grad = False  # Freeze the parameters of the frozen model
         return updated_model, frozen_model
 
 
@@ -105,6 +113,18 @@ class BaseRMU:
                                                                layer_id=self.args.forget_layer_id,
                                                                no_grad=False)
         L_f = x_forget.shape[0]
+
+        # Check the shape of updated_model_activations
+        if isinstance(updated_model_activations, list):
+            updated_model_activations = torch.stack(updated_model_activations)
+        elif isinstance(updated_model_activations, torch.Tensor):
+            if updated_model_activations.dim() == 0:
+                updated_model_activations = updated_model_activations.unsqueeze(0)
+        else:
+            raise ValueError(f"Unexpected type for updated_model_activations: {type(updated_model_activations)}")
+
+        # Convert updated_model_activations to a tensor if it's a list
+        updated_model_activations = torch.tensor(updated_model_activations) if isinstance(updated_model_activations, list) else updated_model_activations
         
         return 1/L_f * torch.nn.functional.mse_loss(updated_model_activations, control_vector * self.args.steering_coefficient)
     
@@ -123,11 +143,23 @@ class BaseRMU:
                                                              no_grad=True)
         L_r = x_retain.shape[0]
         
+        # Convert frozen_model_activations to a tensor if it's a list
+        if isinstance(frozen_model_activations, list):
+            frozen_model_activations = torch.stack(frozen_model_activations)
+
+        # Ensure updated_model_activations is also a tensor
+        if isinstance(updated_model_activations, list):
+            updated_model_activations = torch.stack(updated_model_activations)
+
         return 1/L_r * torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
 
 
     def finetune(self):
         """Main training loop."""
+        # Add this block before tokenizing or creating datasets
+        # if self.tokenizer.pad_token is None:
+        #     self.tokenizer.pad_token = self.tokenizer.eos_token
+        #     self.model.config.pad_token_id = self.model.config.eos_token_id
         
         for epoch in range(self.args.num_epochs):
             with tqdm.tqdm(total=self.args.num_batches) as pbar:
@@ -148,7 +180,13 @@ class BaseRMU:
                     full_loss = l_forget + self.args.alpha * l_retain
 
                     self.optimizer.zero_grad()
-                    full_loss.backward() 
+                    # Add this before full_loss.backward()
+                    # for name, param in model.named_parameters():
+                    #     if not param.requires_grad:
+                    #         print(f"Parameter {name} does not require gradients")
+
+                    # Then call backward
+                    full_loss.backward()
                     self.optimizer.step()
 
                     print(f"Step {batch_id}: loss={full_loss.item():.4f}, forget_loss={l_forget.item():.4f}, retain_loss={l_retain.item():.4f}")
