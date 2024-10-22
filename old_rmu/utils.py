@@ -45,14 +45,14 @@ def get_params(model, layer_ids, param_ids):
     return params
 
 
-def load_model(model_name_or_path):
-    torch_dtype = "auto" if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+def load_model(model_name_or_path, device):
+    torch_dtype = torch.float16 if device == "cuda" else torch.float32
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
         torch_dtype=torch_dtype,
         trust_remote_code=True,
-        device_map="auto",
+        device_map=device,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(

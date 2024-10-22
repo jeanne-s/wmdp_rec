@@ -33,7 +33,7 @@ def run_rmu(
 
     control_vectors_list = []
     for i in range(len(forget_data_list)):
-        random_vector = torch.rand(1,1, updated_model.config.hidden_size, dtype=updated_model.dtype, device=updated_model.device)
+        random_vector = torch.rand(1, 1, updated_model.config.hidden_size, dtype=updated_model.dtype, device=args.device)
         control_vec = random_vector / torch.norm(random_vector) * args.steering_coeff_list[i]
         control_vectors_list.append(control_vec)
 
@@ -60,10 +60,10 @@ def run_rmu(
                 max_length = 512 if topic_idx == 0 else 768
                 unlearn_inputs = tokenizer(
                     unlearn_batch, return_tensors="pt", padding=True, truncation=True, max_length=max_length
-                )
+                ).to(args.device)
                 updated_forget_activations = forward_with_cache(
                     updated_model, unlearn_inputs, module=updated_module, no_grad=False
-                ).to(updated_model.device)
+                ).to(args.device)
 
                 unlearn_loss = torch.nn.functional.mse_loss(
                     updated_forget_activations, control_vec
@@ -72,13 +72,13 @@ def run_rmu(
                 # Retain loss
                 retain_inputs = tokenizer(
                     retain_batch, return_tensors="pt", padding=True, truncation=True, max_length=512
-                ).to(updated_model.device)
+                ).to(args.device)
                 updated_retain_activations = forward_with_cache(
                     updated_model, retain_inputs, module=updated_module, no_grad=False
-                ).to(updated_model.device)
+                ).to(args.device)
                 frozen_retain_activations = forward_with_cache(
                     frozen_model, retain_inputs, module=frozen_module, no_grad=True
-                ).to(updated_model.device)
+                ).to(args.device)
 
                 retain_loss = torch.nn.functional.mse_loss(
                     updated_retain_activations, frozen_retain_activations
@@ -164,6 +164,7 @@ def get_args():
     parser.add_argument("--param_ids", type=str, default="6", help="update params")
     parser.add_argument("--seed", type=int, default=42, help="Seed")
     parser.add_argument("--verbose", action="store_true", help="Logging the activations norms and cosine at each step")
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use (cuda or cpu)")
 
     args = parser.parse_args()
     args.retain_corpora = args.retain_corpora.split(",")
@@ -184,8 +185,8 @@ if __name__ == "__main__":
     torch.manual_seed(SEED)
     np.random.seed(SEED)
 
-    frozen_model, tokenizer = load_model(args.model_name_or_path)
-    updated_model, tokenizer = load_model(args.model_name_or_path)
+    frozen_model, tokenizer = load_model(args.model_name_or_path, args.device)
+    updated_model, tokenizer = load_model(args.model_name_or_path, args.device)
     forget_data_list, retain_data_list = get_data(
         args.forget_corpora,
         args.retain_corpora,
