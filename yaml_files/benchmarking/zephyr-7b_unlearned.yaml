@@ -1,0 +1,9 @@
+args:
+  model_name: "/models/HuggingFaceH4/zephyr-7b-beta/00/model.pt"
+  unlearned_model: True
+  benchmarks:
+    - wmdp
+    - mmlu
+  batch_size: 4
+  limit: 1
+  results_path: "benchmark_results/zephyr-7b-beta"
