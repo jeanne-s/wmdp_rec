@@ -19,6 +19,7 @@ class BaseRMU:
         This method sets up the tokenizer and optimizer for the model.
         """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.torch_dtype = torch.bfloat16
         self.tokenizer = self.load_tokenizer()
         self.updated_model, self.frozen_model = self.load_models()
         self.optimizer = self.load_optimizer() 
@@ -34,20 +35,21 @@ class BaseRMU:
 
 
     def load_models(self):
-        updated_model = Model(model_name=self.args.model_name)
+        # Load a single instance of the model
+        updated_model = Model(model_name=self.args.model_name,
+                              torch_dtype=self.torch_dtype)
 
+        # Initially freeze all parameters
         for param in updated_model.model.parameters():
             param.requires_grad = False
 
+        frozen_model = copy.deepcopy(updated_model)
+
+        # Unfreeze only the layers specified in update_layer_ids for finetuning
         for layer_id in self.args.update_layer_ids:
             if 0 <= layer_id < updated_model.n_layers():
                 for param in updated_model.get_layer(layer_id).parameters():
                     param.requires_grad = True
-
-        frozen_model = copy.deepcopy(updated_model)
-        frozen_model.model.eval()
-        for param in frozen_model.model.model.parameters():
-            param.requires_grad = False
 
         return updated_model, frozen_model
 
@@ -86,14 +88,16 @@ class BaseRMU:
         for dataset_id, retain_dataset in enumerate(self.args.retain_dataset_list):
             retain_datasets.append(
                 JSONLDataset(dataset_name=retain_dataset,
-                             tokenizer=self.tokenizer)
+                             tokenizer=self.tokenizer,
+                             batch_size=self.args.batch_size)
             )
 
         forget_datasets = []
         for dataset_id, forget_dataset_name in enumerate(self.args.forget_dataset_list):
             forget_datasets.append(
                 JSONLDataset(dataset_name=forget_dataset_name,
-                             tokenizer=self.tokenizer)
+                             tokenizer=self.tokenizer,
+                             batch_size=self.args.batch_size)
             )
 
         # If the length of retain_datasets is smaller than forget_datasets, we have to extend it for the 
@@ -115,22 +119,14 @@ class BaseRMU:
         """ 
         updated_model_activations = self.updated_model.forward(input_ids=x_forget, 
                                                                layer_id=self.args.forget_layer_id,
-                                                               no_grad=False)
-        L_f = x_forget.shape[0]
+                                                               no_grad=False).to(self.device, 
+                                                                                 dtype=self.torch_dtype)
 
-        # Check the shape of updated_model_activations
-        if isinstance(updated_model_activations, list):
-            updated_model_activations = torch.stack(updated_model_activations)
-        elif isinstance(updated_model_activations, torch.Tensor):
-            if updated_model_activations.dim() == 0:
-                updated_model_activations = updated_model_activations.unsqueeze(0)
-        else:
-            raise ValueError(f"Unexpected type for updated_model_activations: {type(updated_model_activations)}")
+        # Ensure the control_vector is broadcastable to the shape of updated_model_activations
+        control_vector = control_vector.expand_as(updated_model_activations)
 
-        # Convert updated_model_activations to a tensor if it's a list
-        updated_model_activations = torch.tensor(updated_model_activations) if isinstance(updated_model_activations, list) else updated_model_activations
-        
-        return 1/L_f * torch.nn.functional.mse_loss(updated_model_activations, control_vector * self.args.steering_coefficient)
+        # By default the torch mse_loss function divides the sum of the output by the number of elements in it
+        return torch.nn.functional.mse_loss(updated_model_activations, control_vector * self.args.steering_coefficient)
     
 
     def retain_loss(self, 
@@ -141,29 +137,19 @@ class BaseRMU:
         """
         updated_model_activations = self.updated_model.forward(input_ids=x_retain, 
                                                                layer_id=self.args.forget_layer_id,
-                                                               no_grad=False)
+                                                               no_grad=False).to(self.device, 
+                                                                                  dtype=self.torch_dtype)
         frozen_model_activations = self.frozen_model.forward(input_ids=x_retain,
                                                              layer_id=self.args.forget_layer_id, 
-                                                             no_grad=True)
-        L_r = x_retain.shape[0]
-        
-        # Convert frozen_model_activations to a tensor if it's a list
-        if isinstance(frozen_model_activations, list):
-            frozen_model_activations = torch.stack(frozen_model_activations)
+                                                             no_grad=True).to(self.device, 
+                                                                              dtype=self.torch_dtype)
 
-        # Ensure updated_model_activations is also a tensor
-        if isinstance(updated_model_activations, list):
-            updated_model_activations = torch.stack(updated_model_activations)
-
-        return 1/L_r * torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
+        # By default the torch mse_loss function divides the sum of the output by the number of elements in it
+        return torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
 
 
     def finetune(self):
         """Main training loop."""
-        # Add this block before tokenizing or creating datasets
-        # if self.tokenizer.pad_token is None:
-        #     self.tokenizer.pad_token = self.tokenizer.eos_token
-        #     self.model.config.pad_token_id = self.model.config.eos_token_id
         
         for epoch in range(self.args.num_epochs):
             with tqdm.tqdm(total=self.args.num_batches) as pbar:
@@ -177,22 +163,16 @@ class BaseRMU:
                     
                     x_forget = self.forget_datasets[dataset_id][element_id]['input_ids']
                     x_retain = self.retain_datasets[dataset_id][element_id]['input_ids']
-                    control_vector = self.control_vector_list[dataset_id]
-            
+                    control_vector = self.control_vector_list[dataset_id].to(self.device, dtype=self.torch_dtype)
+        
                     l_forget = self.forget_loss(x_forget=x_forget, control_vector=control_vector)
-                    l_retain = self.retain_loss(x_retain=x_retain)
-                    full_loss = l_forget + self.args.alpha * l_retain
+                    l_retain = self.args.alpha * self.retain_loss(x_retain=x_retain)
+                    full_loss = l_forget + l_retain
 
                     self.optimizer.zero_grad()
-
-                    for name, param in self.updated_model.model.named_parameters():
-                        if not param.requires_grad:
-                            print(f"Parameter {name} does not require gradients")
-
                     full_loss.backward()
                     self.optimizer.step()
-
-                    print(f"Step {batch_id}: loss={full_loss.item():.4f}, forget_loss={l_forget.item():.4f}, retain_loss={l_retain.item():.4f}")
+                    print(f"Step {batch_id}: full_loss={full_loss.item():.5g}, forget_loss={l_forget.item():.5g}, retain_loss={l_retain.item():.5g}")
 
         self.updated_model.save_model(path=self.args.updated_model_path, config_path=self.args.config_file)
         return    

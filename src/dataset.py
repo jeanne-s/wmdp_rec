@@ -10,17 +10,22 @@ class JSONLDataset(Dataset):
     def __init__(self,
                  dataset_name: str,
                  tokenizer: AutoTokenizer,
-                 dataset_folder: str = 'data/'):
+                 tokenizer_max_length: int = 768,
+                 dataset_folder: str = 'data/',
+                 batch_size: int = 4,
+                 min_len: int = 50
+    ):
         self.dataset_name = dataset_name
         self.tokenizer = tokenizer
+        self.tokenizer_max_length = tokenizer_max_length
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dataset_folder = dataset_folder
+        self.batch_size = batch_size
+        self.min_len = min_len
         self.data = self.load_jsonl()
 
 
     def load_jsonl(self):
-        min_len=50
-        batch_size=4
         file_path = os.path.join(self.dataset_folder, self.dataset_name)
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"The file {file_path} does not exist.")
@@ -30,9 +35,9 @@ class JSONLDataset(Dataset):
                 raw_text = json.loads(line)['text']
             else:
                 raw_text = line
-            if len(raw_text) > min_len:
+            if len(raw_text) > self.min_len:
                 data.append(str(raw_text))
-        data = [data[i:i + batch_size] for i in range(0, len(data), batch_size)]
+        data = [data[i:i + self.batch_size] for i in range(0, len(data), self.batch_size)]
         return data
 
 
@@ -59,11 +64,12 @@ class JSONLDataset(Dataset):
             print(f"Raw item: {item}")
             print(f"Error details: {str(e)}")
             raise 
-
+        
         inputs = self.tokenizer(item, 
                                 return_tensors="pt",
                                 padding=True,
-                                truncation=False)
+                                truncation=True,
+                                max_length=self.tokenizer_max_length)
         inputs = {key: value.to(self.device) for key, value in inputs.items()}
         
         return {

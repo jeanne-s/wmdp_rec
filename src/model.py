@@ -7,9 +7,11 @@ import shutil
 class Model:
 
     def __init__(self, 
-                 model_name: str
+                 model_name: str,
+                 torch_dtype
     ):
         self.model_name = model_name
+        self.torch_dtype = torch_dtype
         self.model = self.load_model()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -19,13 +21,13 @@ class Model:
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name, 
                 device_map='auto',  # 'auto' will use all available GPUs
-                torch_dtype=torch.float16
+                torch_dtype=self.torch_dtype
             )
         else:
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 device_map='cpu',
-                torch_dtype=torch.float32  # Use float32 for CPU
+                torch_dtype=self.torch_dtype
             )
 
 
@@ -53,7 +55,8 @@ class Model:
         layers = self.get_all_layers()
         return len(layers)
 
-    
+        #input_ids = input_ids.to(self.device)
+
     def forward(self, 
                 input_ids, 
                 layer_id: int,
@@ -73,7 +76,8 @@ class Model:
             _ = self.model(input_ids)
 
         hook_handle.remove()
-        return activations
+        activations_tensor = torch.stack(activations)
+        return activations_tensor
     
 
     def save_model(self, 

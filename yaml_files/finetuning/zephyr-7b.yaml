@@ -2,7 +2,7 @@ args:
   model_name: "HuggingFaceH4/zephyr-7b-beta"
   num_epochs: 1 
   num_batches: 150
-  alpha: 1200
+  batch_size: 4
   forget_dataset_list:
     - "bio-forget-corpus.jsonl"
   retain_dataset_list: 
