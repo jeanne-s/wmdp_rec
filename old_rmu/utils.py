@@ -36,23 +36,37 @@ def forward_with_cache(model, inputs, module, no_grad=True):
 #######################################
 
 
-def get_params(model, layer_ids, param_ids):
+def get_params(model, layer_ids, param_ids, module_str):
     params = []
     for layer_id in layer_ids:
-        for i, p in enumerate(model.model.layers[layer_id].parameters()):
+        for i, p in enumerate(eval(module_str.format(model_name="model", layer_id=layer_id)).parameters()):
             if i in param_ids:
                 params.append(p)
     return params
 
+# def get_params(model, layer_ids, param_ids):
+#     params = []
+#     for layer_id in layer_ids:
+#         for i, p in enumerate(model.transformer.h[layer_id].parameters()):
+#             if i in param_ids:
+#                 params.append(p)
+#     return params
+
 
 def load_model(model_name_or_path, device):
-    torch_dtype = torch.float16 if device == "cuda" else torch.float32
+    if device == 'cuda':
+        torch_dtype = "auto" if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+        torch_dtype = torch.float32
+        device_map = 'cuda'
+    else:
+        torch_dtype = torch.float32
+        device_map = 'cpu'
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
         torch_dtype=torch_dtype,
         trust_remote_code=True,
-        device_map=device,
+        device_map=device_map,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(
