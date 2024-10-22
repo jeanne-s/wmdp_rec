@@ -1,10 +1,15 @@
 import argparse
-import lm_eval
-#from lm_eval.utils import handle_non_serializable
 import json
 import os
 
+import lm_eval
+import torch
+
+from utils import load_yaml_config, CustomJSONEncoder
+
 # TODO: handle local and non-local models
+
+# from lm_eval.utils import handle_non_serializable
 
 class BenchmarkModels:
 
@@ -18,7 +23,9 @@ class BenchmarkModels:
             model_args=f"pretrained={self.args.model_name}",
             tasks=self.args.benchmarks,
             log_samples=False,
-            batch_size=self.args.batch_size
+            batch_size=self.args.batch_size,
+            limit=self.args.limit,
+            device=self.args.device
         )
         results['results']['model_name'] = self.args.model_name
         return results
@@ -54,18 +61,60 @@ class BenchmarkModels:
 
         # Save the results to the output file
         with open(output_path, "w") as fp:
-            json.dump(results, fp, indent=2, ensure_ascii=False)
+            json.dump(results, fp, indent=2, ensure_ascii=False, cls=CustomJSONEncoder)
 
         print(f"Benchmark results saved to {output_path}")
+    
+    
+    def plot_results(self):
+        """
+        Load and plot the results from the JSON file saved by save_results.
+        """
+        # Determine the model name and the base directory for loading results
+        unlearned_model = "unlearned_model" if self.args.unlearned_model else "base_model"
+        model_dir = os.path.join(self.args.results_path, unlearned_model)
 
+        # Find the latest subfolder
+        subfolders = [f for f in os.listdir(model_dir) if os.path.isdir(os.path.join(model_dir, f))]
+        numbers = [int(f) for f in subfolders if f.isdigit()]
+        latest_subfolder = f"{max(numbers):02}" if numbers else "00"
+
+        # Construct the path to the latest results file
+        results_path = os.path.join(model_dir, latest_subfolder, f"{unlearned_model}_results.json")
+
+        # Load the results
+        with open(results_path, 'r') as file:
+            results = json.load(file)
+
+        # Extract and print the results
+        model_name = results['results']['model_name']
+        wmdp = results['results']['wmdp']['acc,none']
+
+        # TODO: Add plotting logic here
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model evaluation.")
     parser.add_argument("--config_file", type=str, required=True, help="Path to the YAML config file")
+    parser.add_argument("--device", type=str, default="cuda", help="Device to use for evaluation (default: cuda)")
+    parser.add_argument("--plot_only", action="store_true", help="Only plot results without running evaluation")
     args = parser.parse_args()
 
-    benchmarker = BenchmarkModels(args=args)
+    # Check if CUDA is available, if not, use CPU
+    if args.device == "cuda" and not torch.cuda.is_available():
+        print("CUDA is not available. Using CPU instead.")
+        args.device = "cpu"
+
+    config = load_yaml_config(file_path=args.config_file)
     
-    results = benchmarker.benchmark()
-    benchmarker.save_results(results)
+    for attr, value in vars(args).items():
+        setattr(config, attr, value)
+
+    benchmarker = BenchmarkModels(config)
+    
+    if args.plot_only:
+        benchmarker.plot_results()
+    else:
+        results = benchmarker.benchmark()
+        benchmarker.save_results(results)
+        benchmarker.plot_results()
