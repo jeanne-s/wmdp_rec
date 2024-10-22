@@ -149,6 +149,7 @@ class BenchmarkModels:
         print("\nUnlearned Model Results:")
         print(json.dumps(unlearned_results['results'], indent=2))
 
+
 def main():
     parser = argparse.ArgumentParser(description="Model evaluation.")
     parser.add_argument("--config_file", type=str, required=True, help="Path to the YAML config file")
