@@ -1,0 +1,20 @@
+args:
+  model_name: "google/gemma-2-2b-it"
+  num_epochs: 1 
+  num_batches: 150
+  alpha: 1200
+  forget_dataset_list:
+    - "bio-forget-corpus.jsonl"
+  retain_dataset_list: 
+    - "bio-retain-corpus.jsonl"
+  learning_rate: 5e-5
+  steering_coefficient: 6.5
+  alpha: 1200.0
+  forget_layer_id: 7
+  optimizer_param_layer_id: 
+    - 6
+  update_layer_ids:
+    - 5
+    - 6
+    - 7
+  updated_model_path: "models/"
