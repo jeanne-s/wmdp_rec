@@ -55,7 +55,6 @@ class Model:
         layers = self.get_all_layers()
         return len(layers)
 
-        #input_ids = input_ids.to(self.device)
 
     def forward(self, 
                 input_ids, 
