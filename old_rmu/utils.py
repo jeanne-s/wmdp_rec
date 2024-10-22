@@ -56,7 +56,7 @@ def get_params(model, layer_ids, param_ids, module_str):
 def load_model(model_name_or_path, device):
     if device == 'cuda':
         torch_dtype = "auto" if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
-        torch_dtype = torch.float32
+        torch_dtype = torch.float16
         device_map = 'cuda'
     else:
         torch_dtype = torch.float32
