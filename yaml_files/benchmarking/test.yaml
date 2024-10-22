@@ -1,9 +1,0 @@
-args:
-  model_name: "HuggingFaceH4/zephyr-7b-beta"
-  unlearned_model: False
-  benchmarks:
-    - wmdp
-    - mmlu
-  batch_size: 4
-  limit: 1
-  results_path: "benchmark_results/zephyr-7b-beta"
