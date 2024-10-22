@@ -1,5 +1,5 @@
 import torch
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import yaml
 import shutil
@@ -13,6 +13,7 @@ class Model:
         self.model_name = model_name
         self.torch_dtype = torch_dtype
         self.model = self.load_model()
+        self.tokenizer = self.load_tokenizer()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -29,6 +30,10 @@ class Model:
                 device_map='cpu',
                 torch_dtype=self.torch_dtype
             )
+
+    
+    def load_tokenizer(self):
+        return AutoTokenizer.from_pretrained(self.model_name)
 
 
     def get_all_layers(self):
@@ -111,9 +116,14 @@ class Model:
         # Save the model
         self.model.save_pretrained(os.path.join(save_path, "model.pt"))
 
+        # Save the tokenizer (needed to run benchmarks)
+        self.tokenizer.save_pretrained(os.path.join(save_path, "model.pt"))
+
         # Copy the external config file (used in run.py) to the save directory, if provided
         if config_path:
             config_destination = os.path.join(save_path, "config.yaml")
             shutil.copy(config_path, config_destination)
+
+        
 
         return

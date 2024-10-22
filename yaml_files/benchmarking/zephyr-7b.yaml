@@ -1,6 +1,6 @@
 args:
   model_name: "HuggingFaceH4/zephyr-7b-beta"
-  unlearned_model: "models/HuggingFaceH4/zephyr-7b-beta/00/model.pt"
+  unlearned_model: "models/HuggingFaceH4/zephyr-7b-beta/01/model.pt"
   benchmarks:
     - wmdp
     - mmlu
