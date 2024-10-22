@@ -5,6 +5,7 @@ import tqdm as tqdm
 from dataset import JSONLDataset
 from model import Model
 from utils import load_yaml_config
+import copy
 
 
 class BaseRMU: 
@@ -31,20 +32,23 @@ class BaseRMU:
                                                   use_fast=False)
         return tokenizer 
 
-    
-    # def load_models(self):
-    #     updated_model = Model(model_name=self.args.model_name)
-    #     # updated_model.model.to(self.device)
-    #     frozen_model = Model(model_name=self.args.model_name)
-    #     # frozen_model.model.to(self.device)
-    #     return updated_model, frozen_model
 
     def load_models(self):
-        updated_model = Model(model_name=self.args.model_name)#.model.to(self.device)
-        frozen_model = updated_model  # Use the same model instance for both
-        frozen_model.model.eval()  # Set the frozen model to evaluation mode
+        updated_model = Model(model_name=self.args.model_name)
+
+        for param in updated_model.model.parameters():
+            param.requires_grad = False
+
+        for layer_id in self.args.update_layer_ids:
+            if 0 <= layer_id < updated_model.n_layers():
+                for param in updated_model.get_layer(layer_id).parameters():
+                    param.requires_grad = True
+
+        frozen_model = copy.deepcopy(updated_model)
+        frozen_model.model.eval()
         for param in frozen_model.model.model.parameters():
-            param.requires_grad = False  # Freeze the parameters of the frozen model
+            param.requires_grad = False
+
         return updated_model, frozen_model
 
 
@@ -180,12 +184,11 @@ class BaseRMU:
                     full_loss = l_forget + self.args.alpha * l_retain
 
                     self.optimizer.zero_grad()
-                    # Add this before full_loss.backward()
-                    # for name, param in model.named_parameters():
-                    #     if not param.requires_grad:
-                    #         print(f"Parameter {name} does not require gradients")
 
-                    # Then call backward
+                    for name, param in self.updated_model.model.named_parameters():
+                        if not param.requires_grad:
+                            print(f"Parameter {name} does not require gradients")
+
                     full_loss.backward()
                     self.optimizer.step()
 
