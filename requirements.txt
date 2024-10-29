@@ -6,3 +6,6 @@ ipykernel
 sentencepiece
 protobuf
 gdown
+optuna
+plotly
+pandas
