@@ -11,11 +11,14 @@ import torch
 
 from utils import load_yaml_config, CustomJSONEncoder
 
+
 class BenchmarkModels:
+    
     def __init__(self, args):
         self.args = args
         self.results_path = os.path.join("benchmark_results", self.args.model_name.split("/")[-1])
         self.current_subfolder = None
+
 
     def benchmark(self, model_name: str) -> Dict:
         results = lm_eval.simple_evaluate(
@@ -25,10 +28,12 @@ class BenchmarkModels:
             log_samples=False,
             batch_size=self.args.batch_size,
             limit=self.args.limit,
-            device=self.args.device
+            device=self.args.device,
+            trust_remote_code=True
         )
         results['results']['model_name'] = model_name
         return results
+
 
     def get_new_subfolder(self) -> str:
         if not os.path.exists(self.results_path):
@@ -37,6 +42,7 @@ class BenchmarkModels:
         subfolders = [f for f in os.listdir(self.results_path) if os.path.isdir(os.path.join(self.results_path, f))]
         numbers = [int(f) for f in subfolders if f.isdigit()]
         return f"{max(numbers) + 1:02}" if numbers else "00"
+
 
     def save_results(self, results: Dict, model_type: str):
         if self.current_subfolder is None:
@@ -54,6 +60,7 @@ class BenchmarkModels:
             main_output_path = os.path.join(self.results_path, "base_model_eval.json")
             shutil.copy2(output_path, main_output_path)
             print(f"Base model results also saved/updated at {main_output_path}")
+
 
     def run_benchmark(self) -> tuple[Dict, Dict]:
         base_model_path = os.path.join(self.results_path, "base_model_eval.json")
@@ -73,9 +80,11 @@ class BenchmarkModels:
 
         return base_results, unlearned_results
 
+
     @staticmethod
     def get_accuracy(results: Dict, task: str) -> float:
         return results['results'].get(task, {}).get('acc,none', 0) * 100
+
 
     def load_results(self) -> tuple[Dict, Dict]:
         if self.current_subfolder is None:
@@ -91,12 +100,13 @@ class BenchmarkModels:
 
         return base_results, unlearned_results
 
-    def plot_results(self):
+
+    def plot_results(self,
+                     datasets = ['wmdp_bio', 'wmdp_cyber', 'wmdp_chem', 'mmlu'],
+                     display_names = ['WMDP-Bio', 'WMDP-Cyber', 'WMDP-Chem', 'MMLU']
+    ):
         base_results, unlearned_results = self.load_results()
         model_name = base_results['results']['model_name']
-        
-        datasets = ['wmdp_bio', 'wmdp_cyber', 'wmdp_chem', 'mmlu']
-        display_names = ['WMDP-Bio', 'WMDP-Cyber', 'WMDP-Chem', 'MMLU']
 
         scores = {
             'Base': [self.get_accuracy(base_results, dataset) for dataset in datasets],
@@ -105,6 +115,26 @@ class BenchmarkModels:
 
         self.create_plot(scores, display_names, model_name)
         self.print_results(base_results, unlearned_results)
+        return
+
+
+    def plot_mmlu_subcategories(self):
+        datasets = [
+            'mmlu', 
+            'mmlu_college_computer_science', 
+            'mmlu_computer_security', 
+            'mmlu_college_biology',
+            'mmlu_virology'
+        ]
+        display_names = [
+            'All', 
+            'College CS', 
+            'Computer Security', 
+            'College Biology',
+            'Virology'
+        ]
+        return self.plot_results(datasets=datasets, display_names=display_names)
+
 
     def create_plot(self, scores: Dict[str, List[float]], display_names: List[str], model_name: str):
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -119,9 +149,8 @@ class BenchmarkModels:
         ax.set_title(f'WMDP and MMLU Accuracy After Unlearning ({model_name.split("/")[-1]})')
         ax.set_xticks(x)
         ax.set_xticklabels(display_names)
-        ax.legend()
-
         ax.axhline(y=25, color='black', linestyle='--', linewidth=1, label='Random Chance')
+        ax.legend()
 
         for i in range(len(display_names)):
             if scores['RMU (unlearned model)'][i] > scores['Base'][i]:
@@ -137,10 +166,12 @@ class BenchmarkModels:
         print(f"Plot saved to {plot_path}")
         plt.show()
 
+
     @staticmethod
     def add_arrow(ax, x, y, direction):
         ax.annotate(direction, xy=(x, y), xytext=(x, y + 2 if direction == '↑' else y - 2),
                     ha='center', va='bottom' if direction == '↑' else 'top', fontsize=12)
+
 
     @staticmethod
     def print_results(base_results: Dict, unlearned_results: Dict):
@@ -171,9 +202,11 @@ def main():
     
     if args.plot_only:
         benchmarker.plot_results()
+        benchmarker.plot_mmlu_subcategories()
     else:
         benchmarker.run_benchmark()
         benchmarker.plot_results()
+        benchmarker.plot_mmlu_subcategories()
 
 if __name__ == "__main__":
     main()
