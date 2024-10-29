@@ -96,6 +96,11 @@ def run_rmu(
                 loss = unlearn_loss + retain_loss
                 optimizer.zero_grad()
                 loss.backward()
+                
+                # Add gradient clipping before optimizer step
+                if args.grad_clip > 0:
+                    torch.nn.utils.clip_grad_norm_(params, args.grad_clip)
+                
                 optimizer.step()
                 print(f"loss: {loss.item():.4g} | unlearn_loss: {unlearn_loss.item():.4g} | retain_loss: {retain_loss.item():.4g} | param_change: {params[0].grad.abs().mean().item():.4g}")
                 
@@ -174,6 +179,12 @@ def get_args():
     parser.add_argument("--param_ids", type=str, default="6", help="update params")
     parser.add_argument("--seed", type=int, default=42, help="Seed")
     parser.add_argument("--verbose", action="store_true", help="Logging the activations norms and cosine at each step")
+    parser.add_argument(
+        "--grad_clip", 
+        type=float, 
+        default=1.0,
+        help="Maximum norm for gradient clipping"
+    )
 
     args = parser.parse_args()
     args.retain_corpora = args.retain_corpora.split(",")
