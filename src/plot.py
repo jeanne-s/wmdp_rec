@@ -5,9 +5,7 @@ import numpy as np
 
 from typing import Dict, List
 
-
 class BenchmarkPlotter:
-
     def __init__(self, results_path: str, current_subfolder: str):
         self.results_path = results_path
         self.current_subfolder = current_subfolder

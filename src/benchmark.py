@@ -9,6 +9,7 @@ import numpy as np
 import lm_eval
 import torch
 
+from plot import BenchmarkPlotter
 from utils import load_yaml_config, CustomJSONEncoder
 
 
