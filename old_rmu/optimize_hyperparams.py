@@ -92,14 +92,17 @@ def verify_file_exists(filepath, timeout=300, check_interval=10):
     
     while time.time() - start_time < timeout:
         if filepath.exists():
-            if filepath.stat().st_size > 0:
-                logger.info(f"File {filepath} exists and is non-empty")
+            size = filepath.stat().st_size
+            if size > 0:
+                logger.info(f"File {filepath} exists and is non-empty (size: {size} bytes)")
                 return True
             else:
-                logger.warning(f"File {filepath} exists but is empty")
+                logger.warning(f"File {filepath} exists but is empty (size: {size} bytes)")
+        else:
+            logger.debug(f"File {filepath} does not exist yet, waiting...")
         time.sleep(check_interval)
     
-    logger.error(f"Timeout waiting for file {filepath}")
+    logger.error(f"Timeout waiting for file {filepath} after {timeout} seconds")
     return False
 
 def get_results(results_file):
@@ -202,10 +205,21 @@ def objective(trial):
         
         stdout, stderr = run_command(unlearn_command)
         
-        # Verify model files exist
-        if not (trial_dir / "pytorch_model.bin").exists():
-            raise FileNotFoundError("Model file not created after unlearning")
+        # Verify model files exist with retry logic
+        model_file = trial_dir / "pytorch_model.bin"
+        if not verify_file_exists(model_file, timeout=600):  # Increased timeout
+            logger.error(f"Model file {model_file} not created or empty after unlearning")
+            logger.error(f"stdout: {stdout}")
+            logger.error(f"stderr: {stderr}")
+            raise FileNotFoundError(f"Model file {model_file} not created or empty after unlearning")
+            
+        # Add a small delay to ensure file system sync
+        time.sleep(5)
         
+        if not model_file.exists() or model_file.stat().st_size == 0:
+            logger.error("Model file verification failed after delay")
+            raise FileNotFoundError("Model file verification failed after delay")
+            
         # Run evaluation
         eval_command = (
             f"lm-eval --model hf "
