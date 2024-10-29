@@ -120,12 +120,13 @@ def run_rmu(
                 pbar.update(1)
 
     tokenizer.truncation_side = truncation_side
-    # Save model
+    # Use the provided output_dir instead of constructing a new path
     if args.output_dir:
         path = args.output_dir
     else:
         date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         path = f"models/{args.model_name_or_path}_alpha-{args.alpha}_batches-{num_batches}_layer-{args.layer_id}_{date}"
+    
     updated_model.save_pretrained(path)
     tokenizer.save_pretrained(path)
     print(f"Saved model to {path}")

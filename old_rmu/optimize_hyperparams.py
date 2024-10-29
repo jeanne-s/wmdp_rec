@@ -66,8 +66,11 @@ def run_command(command, timeout=7200):
         stderr = ''.join(stderr_lines)
         
         logger.info(f"Command completed in {duration:.2f} seconds")
+        
+        # Immediately fail if there's any stderr output or non-zero return code
         if stderr:
-            logger.warning(f"Command stderr: {stderr}")
+            logger.error(f"Command stderr: {stderr}")
+            raise RuntimeError(f"Command produced stderr output: {stderr}")
         
         if process.returncode != 0:
             logger.error(f"Command failed with return code {process.returncode}")
@@ -91,15 +94,25 @@ def verify_file_exists(filepath, timeout=300, check_interval=10):
     start_time = time.time()
     
     while time.time() - start_time < timeout:
-        if filepath.exists():
-            size = filepath.stat().st_size
-            if size > 0:
-                logger.info(f"File {filepath} exists and is non-empty (size: {size} bytes)")
-                return True
+        try:
+            if filepath.exists():
+                size = filepath.stat().st_size
+                if size > 0:
+                    # Add a small delay to ensure file is fully written
+                    time.sleep(5)
+                    # Verify size hasn't changed
+                    new_size = filepath.stat().st_size
+                    if new_size == size:
+                        logger.info(f"File {filepath} exists and is stable (size: {size} bytes)")
+                        return True
+                    else:
+                        logger.warning(f"File {filepath} size changed from {size} to {new_size}, still writing...")
+                else:
+                    logger.warning(f"File {filepath} exists but is empty (size: {size} bytes)")
             else:
-                logger.warning(f"File {filepath} exists but is empty (size: {size} bytes)")
-        else:
-            logger.debug(f"File {filepath} does not exist yet, waiting...")
+                logger.debug(f"File {filepath} does not exist yet, waiting...")
+        except (OSError, IOError) as e:
+            logger.warning(f"Error checking file: {str(e)}")
         time.sleep(check_interval)
     
     logger.error(f"Timeout waiting for file {filepath} after {timeout} seconds")
@@ -152,7 +165,7 @@ def objective(trial):
     try:
         # Simplified hyperparameter search space
         params = {
-            'layer_id': trial.suggest_int('layer_id', 0, 15),  # Keep the fixed range
+            'layer_id': trial.suggest_int('layer_id', 0, 15),
             'num_batches': 150,  # Fixed value
             'alpha': trial.suggest_float('alpha', 300.0, 2000.0),
             'steering_coeff': trial.suggest_float('steering_coeff', 1.0, 300.0, log=True),
@@ -164,9 +177,10 @@ def objective(trial):
         
         logger.info(f"Trial {trial.number} parameters: {json.dumps(params, indent=2)}")
         
-        # Create trial directory
+        # Create trial directory and define model file path
         trial_dir = Path(f"models/llama_opt_trial_{trial.number}")
         trial_dir.mkdir(parents=True, exist_ok=True)
+        model_file = trial_dir / "pytorch_model.bin"
         
         # Save trial parameters
         with open(trial_dir / "params.json", 'w') as f:
@@ -203,23 +217,13 @@ def objective(trial):
             f"--param_ids {param_ids}"
         )
         
+        # Run unlearning - will raise exception on any error
         stdout, stderr = run_command(unlearn_command)
         
-        # Verify model files exist with retry logic
-        model_file = trial_dir / "pytorch_model.bin"
-        if not verify_file_exists(model_file, timeout=600):  # Increased timeout
-            logger.error(f"Model file {model_file} not created or empty after unlearning")
-            logger.error(f"stdout: {stdout}")
-            logger.error(f"stderr: {stderr}")
+        # Verify model file exists and is valid
+        if not verify_file_exists(model_file, timeout=900):  # 15 minutes timeout
             raise FileNotFoundError(f"Model file {model_file} not created or empty after unlearning")
-            
-        # Add a small delay to ensure file system sync
-        time.sleep(5)
         
-        if not model_file.exists() or model_file.stat().st_size == 0:
-            logger.error("Model file verification failed after delay")
-            raise FileNotFoundError("Model file verification failed after delay")
-            
         # Run evaluation
         eval_command = (
             f"lm-eval --model hf "
@@ -229,6 +233,7 @@ def objective(trial):
             f"--output_path {trial_dir}/results.json"
         )
         
+        # Run evaluation - will raise exception on any error
         stdout, stderr = run_command(eval_command)
         
         # Get and process results
@@ -253,7 +258,12 @@ def objective(trial):
         
     except Exception as e:
         logger.error(f"Trial {trial.number} failed: {str(e)}", exc_info=True)
-        return float('inf')
+        # Clean up trial directory on failure
+        if trial_dir.exists():
+            import shutil
+            shutil.rmtree(trial_dir)
+        # Re-raise the exception to stop the trial
+        raise
 
 def main():
     study_name = "llama_unlearning_optimization"

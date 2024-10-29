@@ -29,8 +29,7 @@ class BenchmarkModels:
             log_samples=False,
             batch_size=self.args.batch_size,
             limit=self.args.limit,
-            device=self.args.device,
-            trust_remote_code=True
+            device=self.args.device
         )
         results['results']['model_name'] = model_name
         return results
@@ -104,7 +103,8 @@ class BenchmarkModels:
 
     def plot_results(self,
                      datasets = ['wmdp_bio', 'wmdp_cyber', 'wmdp_chem', 'mmlu'],
-                     display_names = ['WMDP-Bio', 'WMDP-Cyber', 'WMDP-Chem', 'MMLU']
+                     display_names = ['WMDP-Bio', 'WMDP-Cyber', 'WMDP-Chem', 'MMLU'],
+                     plot_title="accuracy_comparison.png"
     ):
         base_results, unlearned_results = self.load_results()
         model_name = base_results['results']['model_name']
@@ -114,7 +114,7 @@ class BenchmarkModels:
             'RMU (unlearned model)': [self.get_accuracy(unlearned_results, dataset) for dataset in datasets]
         }
 
-        self.create_plot(scores, display_names, model_name)
+        self.create_plot(scores, display_names, model_name, plot_title=plot_title)
         self.print_results(base_results, unlearned_results)
         return
 
@@ -134,10 +134,14 @@ class BenchmarkModels:
             'College Biology',
             'Virology'
         ]
-        return self.plot_results(datasets=datasets, display_names=display_names)
+        return self.plot_results(datasets=datasets, display_names=display_names, plot_title="mmlu_subcategories.png")
 
 
-    def create_plot(self, scores: Dict[str, List[float]], display_names: List[str], model_name: str):
+    def create_plot(self, 
+                    scores: Dict[str, List[float]], 
+                    display_names: List[str], 
+                    model_name: str,
+                    plot_title: str = "accuracy_comparison.png"):
         fig, ax = plt.subplots(figsize=(10, 6))
         x = np.arange(len(display_names))
         width = 0.35
@@ -162,7 +166,7 @@ class BenchmarkModels:
         ax.set_ylim(0, 100)
         plt.tight_layout()
         
-        plot_path = os.path.join(self.results_path, self.current_subfolder, "accuracy_comparison.png")
+        plot_path = os.path.join(self.results_path, self.current_subfolder, plot_title)
         plt.savefig(plot_path)
         print(f"Plot saved to {plot_path}")
         plt.show()
