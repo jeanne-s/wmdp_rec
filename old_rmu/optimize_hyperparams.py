@@ -31,33 +31,27 @@ def run_command(command, timeout=7200):
             stderr=subprocess.PIPE,
             shell=True,
             text=True,
-            bufsize=1,  # Line buffered
+            bufsize=1,
             universal_newlines=True
         )
         
         stdout_lines = []
         stderr_lines = []
         
-        # Function to handle output streams
         def handle_output(pipe, lines):
             for line in iter(pipe.readline, ''):
                 print(line, end='')  # Print in real-time
                 lines.append(line)
             pipe.close()
         
-        # Create threads to handle stdout and stderr
         import threading
         stdout_thread = threading.Thread(target=handle_output, args=(process.stdout, stdout_lines))
         stderr_thread = threading.Thread(target=handle_output, args=(process.stderr, stderr_lines))
         
-        # Start threads
         stdout_thread.start()
         stderr_thread.start()
         
-        # Wait for process to complete
         process.wait(timeout=timeout)
-        
-        # Wait for output threads to complete
         stdout_thread.join()
         stderr_thread.join()
         
@@ -67,25 +61,21 @@ def run_command(command, timeout=7200):
         
         logger.info(f"Command completed in {duration:.2f} seconds")
         
-        # Immediately fail if there's any stderr output or non-zero return code
-        if stderr:
-            logger.error(f"Command stderr: {stderr}")
-            raise RuntimeError(f"Command produced stderr output: {stderr}")
-        
+        # Only fail on actual errors, not warnings
         if process.returncode != 0:
             logger.error(f"Command failed with return code {process.returncode}")
             logger.error(f"stdout: {stdout}")
             logger.error(f"stderr: {stderr}")
             raise subprocess.CalledProcessError(process.returncode, command)
+        
+        # Log warnings but don't fail
+        if stderr:
+            logger.warning(f"Command produced warnings: {stderr}")
             
         return stdout, stderr
         
-    except subprocess.TimeoutExpired:
-        process.kill()
-        logger.error(f"Command timed out after {timeout} seconds")
-        raise
     except Exception as e:
-        logger.error(f"Error running command: {str(e)}")
+        logger.error(f"Command failed: {str(e)}")
         raise
 
 def verify_file_exists(filepath, timeout=300, check_interval=10):
@@ -166,7 +156,7 @@ def objective(trial):
         # Simplified hyperparameter search space
         params = {
             'layer_id': trial.suggest_int('layer_id', 0, 15),
-            'num_batches': 150,  # Fixed value
+            'num_batches': 10,  # Fixed value
             'alpha': trial.suggest_float('alpha', 300.0, 2000.0),
             'steering_coeff': trial.suggest_float('steering_coeff', 1.0, 300.0, log=True),
             'lr': trial.suggest_float('lr', 1e-5, 1e-4, log=True),

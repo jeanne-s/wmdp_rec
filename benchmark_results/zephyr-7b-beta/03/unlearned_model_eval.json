@@ -1,19 +1,19 @@
 {
   "results": {
     "mmlu": {
-      "acc,none": 0.5816123059393249,
-      "acc_stderr,none": 0.00396342326335319,
+      "acc,none": 0.5748468879077054,
+      "acc_stderr,none": 0.003977003611722369,
       "alias": "mmlu"
     },
     "mmlu_humanities": {
       "alias": " - humanities",
-      "acc,none": 0.5298618490967056,
-      "acc_stderr,none": 0.006902028641586309
+      "acc,none": 0.5253985122210414,
+      "acc_stderr,none": 0.0069041165670058816
     },
     "mmlu_formal_logic": {
       "alias": "  - formal_logic",
-      "acc,none": 0.38095238095238093,
-      "acc_stderr,none": 0.043435254289490965
+      "acc,none": 0.3888888888888889,
+      "acc_stderr,none": 0.043603148600774626
     },
     "mmlu_high_school_european_history": {
       "alias": "  - high_school_european_history",
@@ -22,13 +22,13 @@
     },
     "mmlu_high_school_us_history": {
       "alias": "  - high_school_us_history",
-      "acc,none": 0.7549019607843137,
-      "acc_stderr,none": 0.030190282453501943
+      "acc,none": 0.7598039215686274,
+      "acc_stderr,none": 0.029983733055913633
     },
     "mmlu_high_school_world_history": {
       "alias": "  - high_school_world_history",
-      "acc,none": 0.7383966244725738,
-      "acc_stderr,none": 0.028609516716994906
+      "acc,none": 0.7426160337552743,
+      "acc_stderr,none": 0.028458820991460302
     },
     "mmlu_international_law": {
       "alias": "  - international_law",
@@ -37,63 +37,63 @@
     },
     "mmlu_jurisprudence": {
       "alias": "  - jurisprudence",
-      "acc,none": 0.7407407407407407,
-      "acc_stderr,none": 0.04236511258094632
+      "acc,none": 0.7314814814814815,
+      "acc_stderr,none": 0.04284467968052193
     },
     "mmlu_logical_fallacies": {
       "alias": "  - logical_fallacies",
-      "acc,none": 0.6748466257668712,
-      "acc_stderr,none": 0.036803503712864595
+      "acc,none": 0.6441717791411042,
+      "acc_stderr,none": 0.03761521380046734
     },
     "mmlu_moral_disputes": {
       "alias": "  - moral_disputes",
-      "acc,none": 0.653179190751445,
-      "acc_stderr,none": 0.02562472399403043
+      "acc,none": 0.6502890173410405,
+      "acc_stderr,none": 0.02567428145653101
     },
     "mmlu_moral_scenarios": {
       "alias": "  - moral_scenarios",
-      "acc,none": 0.3340782122905028,
-      "acc_stderr,none": 0.015774911422381653
+      "acc,none": 0.3195530726256983,
+      "acc_stderr,none": 0.015595520294147307
     },
     "mmlu_philosophy": {
       "alias": "  - philosophy",
-      "acc,none": 0.662379421221865,
-      "acc_stderr,none": 0.026858825879488558
+      "acc,none": 0.639871382636656,
+      "acc_stderr,none": 0.027264297599803998
     },
     "mmlu_prehistory": {
       "alias": "  - prehistory",
-      "acc,none": 0.6450617283950617,
-      "acc_stderr,none": 0.026624152478845853
+      "acc,none": 0.6327160493827161,
+      "acc_stderr,none": 0.02682280175950788
     },
     "mmlu_professional_law": {
       "alias": "  - professional_law",
-      "acc,none": 0.4217731421121252,
-      "acc_stderr,none": 0.012612974369391069
+      "acc,none": 0.4256844850065189,
+      "acc_stderr,none": 0.01262839355181204
     },
     "mmlu_world_religions": {
       "alias": "  - world_religions",
-      "acc,none": 0.8011695906432749,
-      "acc_stderr,none": 0.030611116557432514
+      "acc,none": 0.8070175438596491,
+      "acc_stderr,none": 0.030267457554898448
     },
     "mmlu_other": {
       "alias": " - other",
-      "acc,none": 0.6594785967170904,
-      "acc_stderr,none": 0.008204554579426983
+      "acc,none": 0.6488574187318957,
+      "acc_stderr,none": 0.008275995347959322
     },
     "mmlu_business_ethics": {
       "alias": "  - business_ethics",
-      "acc,none": 0.53,
-      "acc_stderr,none": 0.05016135580465919
+      "acc,none": 0.55,
+      "acc_stderr,none": 0.05
     },
     "mmlu_clinical_knowledge": {
       "alias": "  - clinical_knowledge",
-      "acc,none": 0.6490566037735849,
-      "acc_stderr,none": 0.029373646253234693
+      "acc,none": 0.6452830188679245,
+      "acc_stderr,none": 0.029445175328199655
     },
     "mmlu_college_medicine": {
       "alias": "  - college_medicine",
-      "acc,none": 0.6358381502890174,
-      "acc_stderr,none": 0.03669072477416912
+      "acc,none": 0.5838150289017341,
+      "acc_stderr,none": 0.037585177754049494
     },
     "mmlu_global_facts": {
       "alias": "  - global_facts",
@@ -102,158 +102,158 @@
     },
     "mmlu_human_aging": {
       "alias": "  - human_aging",
-      "acc,none": 0.6412556053811659,
-      "acc_stderr,none": 0.032190792004199886
+      "acc,none": 0.6547085201793722,
+      "acc_stderr,none": 0.03191100192835789
     },
     "mmlu_management": {
       "alias": "  - management",
-      "acc,none": 0.7378640776699029,
-      "acc_stderr,none": 0.04354631077260595
+      "acc,none": 0.7281553398058253,
+      "acc_stderr,none": 0.04405268024140923
     },
     "mmlu_marketing": {
       "alias": "  - marketing",
-      "acc,none": 0.8290598290598291,
-      "acc_stderr,none": 0.024662496845209797
+      "acc,none": 0.8205128205128205,
+      "acc_stderr,none": 0.025140935950335442
     },
     "mmlu_medical_genetics": {
       "alias": "  - medical_genetics",
-      "acc,none": 0.68,
-      "acc_stderr,none": 0.046882617226215076
+      "acc,none": 0.64,
+      "acc_stderr,none": 0.048241815132442176
     },
     "mmlu_miscellaneous": {
       "alias": "  - miscellaneous",
-      "acc,none": 0.7867177522349936,
-      "acc_stderr,none": 0.014648172749593532
+      "acc,none": 0.7739463601532567,
+      "acc_stderr,none": 0.014957458504335842
     },
     "mmlu_nutrition": {
       "alias": "  - nutrition",
-      "acc,none": 0.6470588235294118,
-      "acc_stderr,none": 0.027363593284684976
+      "acc,none": 0.6437908496732027,
+      "acc_stderr,none": 0.02742047766262924
     },
     "mmlu_professional_accounting": {
       "alias": "  - professional_accounting",
-      "acc,none": 0.42907801418439717,
-      "acc_stderr,none": 0.029525914302558586
+      "acc,none": 0.425531914893617,
+      "acc_stderr,none": 0.02949482760014435
     },
     "mmlu_professional_medicine": {
       "alias": "  - professional_medicine",
-      "acc,none": 0.6507352941176471,
-      "acc_stderr,none": 0.02895975519682485
+      "acc,none": 0.6360294117647058,
+      "acc_stderr,none": 0.029227192460031966
     },
     "mmlu_virology": {
       "alias": "  - virology",
-      "acc,none": 0.5301204819277109,
-      "acc_stderr,none": 0.03885425420866771
+      "acc,none": 0.5,
+      "acc_stderr,none": 0.03892494720807614
     },
     "mmlu_social_sciences": {
       "alias": " - social_sciences",
-      "acc,none": 0.6740331491712708,
-      "acc_stderr,none": 0.008276457567696086
+      "acc,none": 0.6685082872928176,
+      "acc_stderr,none": 0.00832251799352323
     },
     "mmlu_econometrics": {
       "alias": "  - econometrics",
-      "acc,none": 0.4473684210526316,
-      "acc_stderr,none": 0.04677473004491205
+      "acc,none": 0.4298245614035088,
+      "acc_stderr,none": 0.04657047260594963
     },
     "mmlu_high_school_geography": {
       "alias": "  - high_school_geography",
-      "acc,none": 0.702020202020202,
-      "acc_stderr,none": 0.03258630383836556
+      "acc,none": 0.6717171717171717,
+      "acc_stderr,none": 0.03345678422756777
     },
     "mmlu_high_school_government_and_politics": {
       "alias": "  - high_school_government_and_politics",
-      "acc,none": 0.8082901554404145,
-      "acc_stderr,none": 0.02840895362624522
+      "acc,none": 0.7927461139896373,
+      "acc_stderr,none": 0.02925282329180367
     },
     "mmlu_high_school_macroeconomics": {
       "alias": "  - high_school_macroeconomics",
-      "acc,none": 0.5615384615384615,
-      "acc_stderr,none": 0.025158266016868595
+      "acc,none": 0.5666666666666667,
+      "acc_stderr,none": 0.025124653525885145
     },
     "mmlu_high_school_microeconomics": {
       "alias": "  - high_school_microeconomics",
-      "acc,none": 0.5966386554621849,
-      "acc_stderr,none": 0.03186608121408834
+      "acc,none": 0.6260504201680672,
+      "acc_stderr,none": 0.031429466378837145
     },
     "mmlu_high_school_psychology": {
       "alias": "  - high_school_psychology",
-      "acc,none": 0.7669724770642202,
-      "acc_stderr,none": 0.018125669180861538
+      "acc,none": 0.7688073394495413,
+      "acc_stderr,none": 0.0180757502416332
     },
     "mmlu_human_sexuality": {
       "alias": "  - human_sexuality",
-      "acc,none": 0.6793893129770993,
-      "acc_stderr,none": 0.04093329229834282
+      "acc,none": 0.6870229007633588,
+      "acc_stderr,none": 0.040669629056776964
     },
     "mmlu_professional_psychology": {
       "alias": "  - professional_psychology",
-      "acc,none": 0.6143790849673203,
-      "acc_stderr,none": 0.019691459052354088
+      "acc,none": 0.5996732026143791,
+      "acc_stderr,none": 0.019821843688271782
     },
     "mmlu_public_relations": {
       "alias": "  - public_relations",
-      "acc,none": 0.6090909090909091,
-      "acc_stderr,none": 0.046737523336702363
+      "acc,none": 0.6272727272727273,
+      "acc_stderr,none": 0.04631381319425461
     },
     "mmlu_security_studies": {
       "alias": "  - security_studies",
-      "acc,none": 0.689795918367347,
-      "acc_stderr,none": 0.029613459872484392
+      "acc,none": 0.6653061224489796,
+      "acc_stderr,none": 0.030209235226242293
     },
     "mmlu_sociology": {
       "alias": "  - sociology",
-      "acc,none": 0.8208955223880597,
-      "acc_stderr,none": 0.027113286753111865
+      "acc,none": 0.8109452736318408,
+      "acc_stderr,none": 0.02768691358801299
     },
     "mmlu_us_foreign_policy": {
       "alias": "  - us_foreign_policy",
-      "acc,none": 0.83,
-      "acc_stderr,none": 0.03775251680686369
+      "acc,none": 0.81,
+      "acc_stderr,none": 0.039427724440366255
     },
     "mmlu_stem": {
       "alias": " - stem",
-      "acc,none": 0.49191246431969554,
-      "acc_stderr,none": 0.008653687356849883
+      "acc,none": 0.48430066603235017,
+      "acc_stderr,none": 0.008665422157871099
     },
     "mmlu_abstract_algebra": {
       "alias": "  - abstract_algebra",
-      "acc,none": 0.34,
-      "acc_stderr,none": 0.04760952285695233
+      "acc,none": 0.31,
+      "acc_stderr,none": 0.04648231987117317
     },
     "mmlu_anatomy": {
       "alias": "  - anatomy",
-      "acc,none": 0.5555555555555556,
-      "acc_stderr,none": 0.04292596718256977
+      "acc,none": 0.5407407407407407,
+      "acc_stderr,none": 0.04304979692464244
     },
     "mmlu_astronomy": {
       "alias": "  - astronomy",
-      "acc,none": 0.6118421052631579,
-      "acc_stderr,none": 0.03965842097512745
+      "acc,none": 0.5789473684210527,
+      "acc_stderr,none": 0.040179012759817535
     },
     "mmlu_college_biology": {
       "alias": "  - college_biology",
-      "acc,none": 0.6875,
-      "acc_stderr,none": 0.038760854559127644
+      "acc,none": 0.6736111111111112,
+      "acc_stderr,none": 0.03921067198982268
     },
     "mmlu_college_chemistry": {
       "alias": "  - college_chemistry",
-      "acc,none": 0.44,
-      "acc_stderr,none": 0.049888765156985884
+      "acc,none": 0.43,
+      "acc_stderr,none": 0.049756985195624305
     },
     "mmlu_college_computer_science": {
       "alias": "  - college_computer_science",
-      "acc,none": 0.5,
-      "acc_stderr,none": 0.050251890762960605
+      "acc,none": 0.49,
+      "acc_stderr,none": 0.05024183937956913
     },
     "mmlu_college_mathematics": {
       "alias": "  - college_mathematics",
-      "acc,none": 0.35,
-      "acc_stderr,none": 0.04793724854411023
+      "acc,none": 0.31,
+      "acc_stderr,none": 0.04648231987117317
     },
     "mmlu_college_physics": {
       "alias": "  - college_physics",
-      "acc,none": 0.5,
-      "acc_stderr,none": 0.04975185951049946
+      "acc,none": 0.4803921568627451,
+      "acc_stderr,none": 0.04971358884367401
     },
     "mmlu_computer_security": {
       "alias": "  - computer_security",
@@ -262,105 +262,105 @@
     },
     "mmlu_conceptual_physics": {
       "alias": "  - conceptual_physics",
-      "acc,none": 0.4808510638297872,
-      "acc_stderr,none": 0.0326620429906468
+      "acc,none": 0.49361702127659574,
+      "acc_stderr,none": 0.03268335899936338
     },
     "mmlu_electrical_engineering": {
       "alias": "  - electrical_engineering",
-      "acc,none": 0.5241379310344828,
-      "acc_stderr,none": 0.04161808503501534
+      "acc,none": 0.5172413793103449,
+      "acc_stderr,none": 0.04164188720169378
     },
     "mmlu_elementary_mathematics": {
       "alias": "  - elementary_mathematics",
-      "acc,none": 0.4074074074074074,
-      "acc_stderr,none": 0.02530590624159063
+      "acc,none": 0.41534391534391535,
+      "acc_stderr,none": 0.025379524910778408
     },
     "mmlu_high_school_biology": {
       "alias": "  - high_school_biology",
-      "acc,none": 0.7096774193548387,
-      "acc_stderr,none": 0.025822106119415957
+      "acc,none": 0.7,
+      "acc_stderr,none": 0.026069362295335054
     },
     "mmlu_high_school_chemistry": {
       "alias": "  - high_school_chemistry",
-      "acc,none": 0.4433497536945813,
-      "acc_stderr,none": 0.03495334582162933
+      "acc,none": 0.43349753694581283,
+      "acc_stderr,none": 0.034867317274198714
     },
     "mmlu_high_school_computer_science": {
       "alias": "  - high_school_computer_science",
-      "acc,none": 0.59,
-      "acc_stderr,none": 0.04943110704237104
+      "acc,none": 0.57,
+      "acc_stderr,none": 0.049756985195624305
     },
     "mmlu_high_school_mathematics": {
       "alias": "  - high_school_mathematics",
-      "acc,none": 0.34074074074074073,
-      "acc_stderr,none": 0.028897748741131143
+      "acc,none": 0.3296296296296296,
+      "acc_stderr,none": 0.028661201116524572
     },
     "mmlu_high_school_physics": {
       "alias": "  - high_school_physics",
-      "acc,none": 0.271523178807947,
-      "acc_stderr,none": 0.03631329803969657
+      "acc,none": 0.2980132450331126,
+      "acc_stderr,none": 0.03734535676787201
     },
     "mmlu_high_school_statistics": {
       "alias": "  - high_school_statistics",
-      "acc,none": 0.5046296296296297,
-      "acc_stderr,none": 0.034098255191635805
+      "acc,none": 0.4861111111111111,
+      "acc_stderr,none": 0.03408655867977753
     },
     "mmlu_machine_learning": {
       "alias": "  - machine_learning",
-      "acc,none": 0.45535714285714285,
-      "acc_stderr,none": 0.04726835553719097
+      "acc,none": 0.4642857142857143,
+      "acc_stderr,none": 0.04733667890053756
     },
     "wmdp": {
-      "acc,none": 0.5111777535441657,
-      "acc_stderr,none": 0.008105529487557578,
+      "acc,none": 0.5169029443838604,
+      "acc_stderr,none": 0.008123046707255202,
       "alias": "wmdp"
     },
     "wmdp_bio": {
-      "acc,none": 0.6417910447761194,
-      "acc_stderr,none": 0.013443782891895253,
+      "acc,none": 0.638648860958366,
+      "acc_stderr,none": 0.013469523407071169,
       "alias": " - wmdp_bio"
     },
     "wmdp_chem": {
-      "acc,none": 0.4534313725490196,
-      "acc_stderr,none": 0.02467635037154587,
+      "acc,none": 0.4583333333333333,
+      "acc_stderr,none": 0.024697874098492466,
       "alias": " - wmdp_chem"
     },
     "wmdp_cyber": {
-      "acc,none": 0.4393558127830901,
-      "acc_stderr,none": 0.011136846353673806,
+      "acc,none": 0.4509310518369401,
+      "acc_stderr,none": 0.011165518383329309,
       "alias": " - wmdp_cyber"
     },
-    "model_name": "HuggingFaceH4/zephyr-7b-beta"
+    "model_name": "models/HuggingFaceH4/zephyr-7b-beta/00/model.pt"
   },
   "groups": {
     "mmlu": {
-      "acc,none": 0.5816123059393249,
-      "acc_stderr,none": 0.00396342326335319,
+      "acc,none": 0.5748468879077054,
+      "acc_stderr,none": 0.003977003611722369,
       "alias": "mmlu"
     },
     "mmlu_humanities": {
       "alias": " - humanities",
-      "acc,none": 0.5298618490967056,
-      "acc_stderr,none": 0.006902028641586309
+      "acc,none": 0.5253985122210414,
+      "acc_stderr,none": 0.0069041165670058816
     },
     "mmlu_other": {
       "alias": " - other",
-      "acc,none": 0.6594785967170904,
-      "acc_stderr,none": 0.008204554579426983
+      "acc,none": 0.6488574187318957,
+      "acc_stderr,none": 0.008275995347959322
     },
     "mmlu_social_sciences": {
       "alias": " - social_sciences",
-      "acc,none": 0.6740331491712708,
-      "acc_stderr,none": 0.008276457567696086
+      "acc,none": 0.6685082872928176,
+      "acc_stderr,none": 0.00832251799352323
     },
     "mmlu_stem": {
       "alias": " - stem",
-      "acc,none": 0.49191246431969554,
-      "acc_stderr,none": 0.008653687356849883
+      "acc,none": 0.48430066603235017,
+      "acc_stderr,none": 0.008665422157871099
     },
     "wmdp": {
-      "acc,none": 0.5111777535441657,
-      "acc_stderr,none": 0.008105529487557578,
+      "acc,none": 0.5169029443838604,
+      "acc_stderr,none": 0.008123046707255202,
       "alias": "wmdp"
     }
   },
@@ -2838,7 +2838,7 @@
   },
   "config": {
     "model": "hf",
-    "model_args": "pretrained=HuggingFaceH4/zephyr-7b-beta",
+    "model_args": "pretrained=models/HuggingFaceH4/zephyr-7b-beta/00/model.pt",
     "batch_size": 4,
     "batch_sizes": [],
     "device": "cuda",
@@ -2848,7 +2848,7 @@
     "gen_kwargs": null
   },
   "git_hash": "ac780d0",
-  "date": 1730222408.9678144,
+  "date": 1730224803.2320075,
   "pretty_env_info": "PyTorch version: 2.5.0+cu124\nIs debug build: False\nCUDA used to build PyTorch: 12.4\nROCM used to build PyTorch: N/A\n\nOS: Ubuntu 20.04.6 LTS (x86_64)\nGCC version: (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0\nClang version: Could not collect\nCMake version: Could not collect\nLibc version: glibc-2.31\n\nPython version: 3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:27:36) [GCC 11.2.0] (64-bit runtime)\nPython platform: Linux-6.8.0-40-generic-x86_64-with-glibc2.31\nIs CUDA available: True\nCUDA runtime version: 12.0.140\nCUDA_MODULE_LOADING set to: LAZY\nGPU models and configuration: GPU 0: NVIDIA H100 PCIe\nNvidia driver version: 535.183.01\ncuDNN version: Could not collect\nHIP runtime version: N/A\nMIOpen runtime version: N/A\nIs XNNPACK available: True\n\nCPU:\nArchitecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nByte Order:                           Little Endian\nAddress sizes:                        52 bits physical, 57 bits virtual\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nNUMA node(s):                         2\nVendor ID:                            AuthenticAMD\nCPU family:                           25\nModel:                                17\nModel name:                           AMD EPYC 9354 32-Core Processor\nStepping:                             1\nFrequency boost:                      enabled\nCPU MHz:                              1500.000\nCPU max MHz:                          3799.0720\nCPU min MHz:                          1500.0000\nBogoMIPS:                             6500.26\nVirtualization:                       AMD-V\nL1d cache:                            2 MiB\nL1i cache:                            2 MiB\nL2 cache:                             64 MiB\nL3 cache:                             512 MiB\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Mitigation; Safe RET\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Enhanced / Automatic IBRS; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good amd_lbr_v2 nopl nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba perfmon_v2 ibrs ibpb stibp ibrs_enhanced vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local user_shstk avx512_bf16 clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin cppc arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif x2avic v_spec_ctrl vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq la57 rdpid overflow_recov succor smca fsrm flush_l1d debug_swap\n\nVersions of relevant libraries:\n[pip3] numpy==2.1.2\n[pip3] torch==2.5.0\n[pip3] triton==3.1.0\n[conda] numpy                     2.1.2                    pypi_0    pypi\n[conda] torch                     2.5.0                    pypi_0    pypi\n[conda] triton                    3.1.0                    pypi_0    pypi",
   "transformers_version": "4.46.0",
   "upper_git_hash": null
