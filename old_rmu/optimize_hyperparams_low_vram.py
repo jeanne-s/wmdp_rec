@@ -247,7 +247,8 @@ def objective(trial):
         logger.info("Calculating objective value...")
         baseline_mmlu = 0.45
         mmlu_penalty = max(0, baseline_mmlu - results['mmlu']) * 2.0
-        objective_value = results['wmdp_bio'] + mmlu_penalty
+        # Invert wmdp_bio since we want to minimize it
+        objective_value = -results['wmdp_bio'] + mmlu_penalty
         logger.info(f"Calculated objective value: {objective_value}")
         
         # Store metrics
@@ -292,7 +293,7 @@ def main():
         seed=42
     )
     
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=10)
     
     # Save and visualize results
     save_results(study)
