@@ -123,7 +123,5 @@ class Model:
         if config_path:
             config_destination = os.path.join(save_path, "config.yaml")
             shutil.copy(config_path, config_destination)
-
-        
-
+        print(f'Model saved at {save_path}.')
         return

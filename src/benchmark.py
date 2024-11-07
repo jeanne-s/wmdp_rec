@@ -24,7 +24,7 @@ class BenchmarkModels:
     def benchmark(self, model_name: str) -> Dict:
         results = lm_eval.simple_evaluate(
             model="hf",
-            model_args=f"pretrained={model_name}",
+            model_args=f"pretrained={model_name},trust_remote_code={self.args.trust_remote_code}",
             tasks=self.args.benchmarks,
             log_samples=False,
             batch_size=self.args.batch_size,
