@@ -6,6 +6,8 @@ from dataset import JSONLDataset, WikitextDataset
 from model import Model
 from utils import load_yaml_config
 import copy
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class BaseRMU: 

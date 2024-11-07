@@ -3,6 +3,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import yaml
 import shutil
+from dotenv import load_dotenv
+load_dotenv()
+
 
 class Model:
 
@@ -18,17 +21,20 @@ class Model:
 
 
     def load_model(self):
+        hf_token = os.getenv("HUGGINGFACE_TOKEN")
         if torch.cuda.is_available():
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name, 
                 device_map='auto',
-                torch_dtype=self.torch_dtype
+                torch_dtype=self.torch_dtype,
+                use_auth_token=hf_token
             )
         else:
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 device_map='cpu',
-                torch_dtype=self.torch_dtype
+                torch_dtype=self.torch_dtype,
+                use_auth_token=hf_token
             )
 
     

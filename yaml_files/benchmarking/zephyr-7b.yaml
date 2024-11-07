@@ -4,7 +4,7 @@ args:
   benchmarks:
     - wmdp
     - mmlu
-  batch_size: 4
-  limit: 200
+  batch_size: 5
+  limit: 100000
   trust_remote_code: True
   results_path: "benchmark_results/zephyr-7b-beta"

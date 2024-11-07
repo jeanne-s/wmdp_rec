@@ -11,3 +11,4 @@ plotly
 pandas
 matplotlib
 kaleido
+python-dotenv
