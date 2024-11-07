@@ -21,7 +21,7 @@ class Model:
         if torch.cuda.is_available():
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name, 
-                device_map='auto',  # 'auto' will use all available GPUs
+                device_map='auto',
                 torch_dtype=self.torch_dtype
             )
         else:
@@ -39,7 +39,7 @@ class Model:
     def get_all_layers(self):
         if hasattr(self.model, 'transformer'):  # For models like GPT-2
             layers = self.model.transformer.h
-        elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For specific models (e.g., zephyr, Mixtral)
+        elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For other models (e.g., zephyr, Yi, Mixtral)
             layers = self.model.model.layers
         else:
             raise ValueError(f"Unknown architecture for model {self.model_name}. Unable to find layers.")

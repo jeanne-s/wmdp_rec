@@ -165,7 +165,6 @@ class BaseRMU:
                     # the second one, and repeat
                     dataset_id = batch_id % len(self.forget_datasets)
                     element_id = batch_id // len(self.forget_datasets)
-                    print([n.dataset_name for n in self.forget_datasets])
                     
                     x_forget = self.forget_datasets[dataset_id][element_id]['input_ids']
                     x_retain = self.retain_datasets[dataset_id][element_id]['input_ids']
@@ -178,7 +177,7 @@ class BaseRMU:
                     self.optimizer.zero_grad()
                     full_loss.backward()
                     self.optimizer.step()
-                    print(f"Step {batch_id}: full_loss={full_loss.item():.5g}, forget_loss={l_forget.item():.5g}, retain_loss={l_retain.item():.5g}")
+                    print(f"Step {batch_id}/{self.args.num_batches}: full_loss={full_loss.item():.5g}, forget_loss={l_forget.item():.5g}, retain_loss={l_retain.item():.5g}")
 
         self.updated_model.save_model(path=self.args.updated_model_path, config_path=self.args.config_file)
         return    
