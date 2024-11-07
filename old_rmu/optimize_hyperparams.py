@@ -229,7 +229,7 @@ def objective(trial):
             f"lm-eval --model hf "
             f"--model_args pretrained={trial_dir} "
             f"--tasks wmdp,mmlu "
-            f"--batch_size=16 "  # Keep GPU batch size
+            f"--batch_size=8 "  # Keep GPU batch size
             f"--output_path {trial_dir}/results.json"
         )
         
