@@ -10,3 +10,4 @@ optuna
 plotly
 pandas
 matplotlib
+kaleido
