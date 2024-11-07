@@ -9,3 +9,5 @@ gdown
 optuna
 plotly
 pandas
+matplotlib
+kaleido

@@ -24,7 +24,7 @@ class BenchmarkModels:
     def benchmark(self, model_name: str) -> Dict:
         results = lm_eval.simple_evaluate(
             model="hf",
-            model_args=f"pretrained={model_name}",
+            model_args=f"pretrained={model_name},trust_remote_code={self.args.trust_remote_code}",
             tasks=self.args.benchmarks,
             log_samples=False,
             batch_size=self.args.batch_size,
@@ -102,9 +102,10 @@ class BenchmarkModels:
 
 
     def plot_results(self,
+                     plot_title = "WMDP and MMLU Accuracy After Unlearning",
                      datasets = ['wmdp_bio', 'wmdp_cyber', 'wmdp_chem', 'mmlu'],
                      display_names = ['WMDP-Bio', 'WMDP-Cyber', 'WMDP-Chem', 'MMLU'],
-                     plot_title="accuracy_comparison.png"
+                     plot_filename="accuracy_comparison.png"
     ):
         base_results, unlearned_results = self.load_results()
         model_name = base_results['results']['model_name']
@@ -114,7 +115,11 @@ class BenchmarkModels:
             'RMU (unlearned model)': [self.get_accuracy(unlearned_results, dataset) for dataset in datasets]
         }
 
-        self.create_plot(scores, display_names, model_name, plot_title=plot_title)
+        self.create_plot(scores, 
+                         display_names, 
+                         model_name, 
+                         plot_filename=plot_filename,
+                         plot_title=plot_title)
         self.print_results(base_results, unlearned_results)
         return
 
@@ -134,14 +139,19 @@ class BenchmarkModels:
             'College Biology',
             'Virology'
         ]
-        return self.plot_results(datasets=datasets, display_names=display_names, plot_title="mmlu_subcategories.png")
+        return self.plot_results(datasets=datasets, 
+                                 display_names=display_names, 
+                                 plot_filename="mmlu_subcategories.png",
+                                 plot_title="MMLU Accuracy after Unlearning")
 
 
     def create_plot(self, 
                     scores: Dict[str, List[float]], 
                     display_names: List[str], 
                     model_name: str,
-                    plot_title: str = "accuracy_comparison.png"):
+                    plot_filename: str = "accuracy_comparison.png",
+                    plot_title: str = "WMDP and MMLU Accuracy After Unlearning"
+    ):
         fig, ax = plt.subplots(figsize=(10, 6))
         x = np.arange(len(display_names))
         width = 0.35
@@ -151,7 +161,7 @@ class BenchmarkModels:
             ax.bar(x + offset, data, width, label=label, color=['#1f77b4', '#aec7e8'][i])
 
         ax.set_ylabel('Accuracy')
-        ax.set_title(f'WMDP and MMLU Accuracy After Unlearning ({model_name.split("/")[-1]})')
+        ax.set_title(f'{plot_title} ({model_name.split("/")[-1]})')
         ax.set_xticks(x)
         ax.set_xticklabels(display_names)
         ax.axhline(y=25, color='black', linestyle='--', linewidth=1, label='Random Chance')
@@ -166,7 +176,7 @@ class BenchmarkModels:
         ax.set_ylim(0, 100)
         plt.tight_layout()
         
-        plot_path = os.path.join(self.results_path, self.current_subfolder, plot_title)
+        plot_path = os.path.join(self.results_path, self.current_subfolder, plot_filename)
         plt.savefig(plot_path)
         print(f"Plot saved to {plot_path}")
         plt.show()

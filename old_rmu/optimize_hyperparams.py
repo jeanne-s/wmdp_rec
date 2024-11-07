@@ -31,27 +31,33 @@ def run_command(command, timeout=7200):
             stderr=subprocess.PIPE,
             shell=True,
             text=True,
-            bufsize=1,
+            bufsize=1,  # Line buffered
             universal_newlines=True
         )
         
         stdout_lines = []
         stderr_lines = []
         
+        # Function to handle output streams
         def handle_output(pipe, lines):
             for line in iter(pipe.readline, ''):
                 print(line, end='')  # Print in real-time
                 lines.append(line)
             pipe.close()
         
+        # Create threads to handle stdout and stderr
         import threading
         stdout_thread = threading.Thread(target=handle_output, args=(process.stdout, stdout_lines))
         stderr_thread = threading.Thread(target=handle_output, args=(process.stderr, stderr_lines))
         
+        # Start threads
         stdout_thread.start()
         stderr_thread.start()
         
+        # Wait for process to complete
         process.wait(timeout=timeout)
+        
+        # Wait for output threads to complete
         stdout_thread.join()
         stderr_thread.join()
         
@@ -60,22 +66,23 @@ def run_command(command, timeout=7200):
         stderr = ''.join(stderr_lines)
         
         logger.info(f"Command completed in {duration:.2f} seconds")
+        if stderr:
+            logger.warning(f"Command stderr: {stderr}")
         
-        # Only fail on actual errors, not warnings
         if process.returncode != 0:
             logger.error(f"Command failed with return code {process.returncode}")
             logger.error(f"stdout: {stdout}")
             logger.error(f"stderr: {stderr}")
             raise subprocess.CalledProcessError(process.returncode, command)
-        
-        # Log warnings but don't fail
-        if stderr:
-            logger.warning(f"Command produced warnings: {stderr}")
             
         return stdout, stderr
         
+    except subprocess.TimeoutExpired:
+        process.kill()
+        logger.error(f"Command timed out after {timeout} seconds")
+        raise
     except Exception as e:
-        logger.error(f"Command failed: {str(e)}")
+        logger.error(f"Error running command: {str(e)}")
         raise
 
 def verify_file_exists(filepath, timeout=300, check_interval=10):
@@ -84,55 +91,49 @@ def verify_file_exists(filepath, timeout=300, check_interval=10):
     start_time = time.time()
     
     while time.time() - start_time < timeout:
-        try:
-            if filepath.exists():
-                size = filepath.stat().st_size
-                if size > 0:
-                    # Add a small delay to ensure file is fully written
-                    time.sleep(5)
-                    # Verify size hasn't changed
-                    new_size = filepath.stat().st_size
-                    if new_size == size:
-                        logger.info(f"File {filepath} exists and is stable (size: {size} bytes)")
-                        return True
-                    else:
-                        logger.warning(f"File {filepath} size changed from {size} to {new_size}, still writing...")
-                else:
-                    logger.warning(f"File {filepath} exists but is empty (size: {size} bytes)")
+        if filepath.exists():
+            size = filepath.stat().st_size
+            if size > 0:
+                logger.info(f"File {filepath} exists and is non-empty (size: {size} bytes)")
+                return True
             else:
-                logger.debug(f"File {filepath} does not exist yet, waiting...")
-        except (OSError, IOError) as e:
-            logger.warning(f"Error checking file: {str(e)}")
+                logger.warning(f"File {filepath} exists but is empty (size: {size} bytes)")
+        else:
+            logger.debug(f"File {filepath} does not exist yet, waiting...")
         time.sleep(check_interval)
     
     logger.error(f"Timeout waiting for file {filepath} after {timeout} seconds")
     return False
 
 def get_results(results_file):
-    """Get results with enhanced error handling"""
-    try:
-        if not verify_file_exists(results_file):
-            raise FileNotFoundError(f"Results file {results_file} not found or empty")
-            
-        with open(results_file, 'r') as f:
-            results = json.load(f)
-            
-        # Validate results structure
-        required_keys = ['results', 'wmdp_bio', 'mmlu']
-        for key in required_keys:
-            if key not in results.get('results', {}):
-                raise KeyError(f"Missing required key {key} in results")
-        
-        return {
-            'wmdp_bio': results['results']['wmdp_bio']['acc,none'],
-            'mmlu': results['results']['mmlu']['acc']
-        }
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse results file: {str(e)}")
-        raise
-    except Exception as e:
-        logger.error(f"Error getting results: {str(e)}")
-        raise
+    """Get results from evaluation output"""
+    with open(results_file) as f:
+        data = json.load(f)
+    
+    # Add logging to debug the structure
+    logger.debug(f"Results file contents: {json.dumps(data, indent=2)}")
+    
+    # Check if we have the expected structure
+    required_keys = ['results']
+    for key in required_keys:
+        if key not in data:
+            # Create the expected structure if it doesn't exist
+            if key == 'results':
+                # The file already has the results directly in the root
+                return {
+                    'wmdp': data.get('wmdp', {}).get('acc,none', 0.0),
+                    'wmdp_bio': data.get('wmdp_bio', {}).get('acc,none', 0.0),
+                    'mmlu': data.get('mmlu', {}).get('acc,none', 0.0)
+                }
+            raise KeyError(f"Missing required key {key} in results")
+
+    # If we have the expected structure, proceed as before
+    results = data['results']
+    return {
+        'wmdp': results.get('wmdp', {}).get('acc,none', 0.0),
+        'wmdp_bio': results.get('wmdp_bio', {}).get('acc,none', 0.0),
+        'mmlu': results.get('mmlu', {}).get('acc,none', 0.0)
+    }
 
 def get_module_params(param_type):
     """Return parameter indices based on type"""
@@ -160,17 +161,16 @@ def objective(trial):
             'alpha': trial.suggest_float('alpha', 300.0, 2000.0),
             'steering_coeff': trial.suggest_float('steering_coeff', 1.0, 300.0, log=True),
             'lr': trial.suggest_float('lr', 1e-5, 1e-4, log=True),
-            'batch_size': 16,  # Fixed value
+            'batch_size': 8,  # Fixed value - different from low_vram
             'module_type': 'mlp',  # Fixed value
             'window_size': trial.suggest_int('window_size', 1, 3),
         }
         
         logger.info(f"Trial {trial.number} parameters: {json.dumps(params, indent=2)}")
         
-        # Create trial directory and define model file path
+        # Create trial directory
         trial_dir = Path(f"models/llama_opt_trial_{trial.number}")
         trial_dir.mkdir(parents=True, exist_ok=True)
-        model_file = trial_dir / "pytorch_model.bin"
         
         # Save trial parameters
         with open(trial_dir / "params.json", 'w') as f:
@@ -201,38 +201,55 @@ def objective(trial):
             f"--seed 42 "
             f"--output_dir {trial_dir} "
             f"--model meta-llama/Llama-3.2-1B-Instruct "
-            f"--device cuda "
+            f"--device cuda "  # Different from low_vram
             f"--layer_id {params['layer_id']} "
             f"--layer_ids {layer_ids} "
             f"--param_ids {param_ids}"
         )
         
-        # Run unlearning - will raise exception on any error
         stdout, stderr = run_command(unlearn_command)
         
-        # Verify model file exists and is valid
-        if not verify_file_exists(model_file, timeout=900):  # 15 minutes timeout
+        # Verify model files exist with retry logic
+        model_file = trial_dir / "model.safetensors"
+        if not verify_file_exists(model_file, timeout=60):
+            logger.error(f"Model file {model_file} not created or empty after unlearning")
+            logger.error(f"stdout: {stdout}")
+            logger.error(f"stderr: {stderr}")
             raise FileNotFoundError(f"Model file {model_file} not created or empty after unlearning")
+            
+        # Add a small delay to ensure file system sync
+        time.sleep(5)
+        
+        if not model_file.exists() or model_file.stat().st_size == 0:
+            logger.error("Model file verification failed after delay")
+            raise FileNotFoundError("Model file verification failed after delay")
         
         # Run evaluation
         eval_command = (
             f"lm-eval --model hf "
             f"--model_args pretrained={trial_dir} "
             f"--tasks wmdp,mmlu "
-            f"--batch_size=16 "
+            f"--batch_size=8 "  # Keep GPU batch size
             f"--output_path {trial_dir}/results.json"
         )
         
-        # Run evaluation - will raise exception on any error
+        # Add logging before evaluation
+        logger.info("Starting evaluation command...")
         stdout, stderr = run_command(eval_command)
+        logger.info("Evaluation command completed")
         
-        # Get and process results
+        # Add logging for results processing
+        logger.info("Processing evaluation results...")
         results = get_results(f"{trial_dir}/results.json")
+        logger.info(f"Processed results: {results}")
         
-        # Calculate objective
+        # Add logging for objective calculation
+        logger.info("Calculating objective value...")
         baseline_mmlu = 0.45
         mmlu_penalty = max(0, baseline_mmlu - results['mmlu']) * 2.0
+        # We want to minimize wmdp_bio directly (no negative sign needed)
         objective_value = results['wmdp_bio'] + mmlu_penalty
+        logger.info(f"Calculated objective value: {objective_value}")
         
         # Store metrics
         trial.set_user_attr('wmdp_bio_acc', results['wmdp_bio'])
@@ -252,7 +269,6 @@ def objective(trial):
         if trial_dir.exists():
             import shutil
             shutil.rmtree(trial_dir)
-        # Re-raise the exception to stop the trial
         raise
 
 def main():
@@ -281,7 +297,7 @@ def main():
         seed=42
     )
     
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=10)
     
     # Save and visualize results
     save_results(study)

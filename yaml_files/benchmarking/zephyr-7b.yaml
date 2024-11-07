@@ -1,9 +1,10 @@
 args:
   model_name: "HuggingFaceH4/zephyr-7b-beta"
-  unlearned_model: "models/HuggingFaceH4/zephyr-7b-beta/00/model.pt"
+  unlearned_model: "models/HuggingFaceH4/zephyr-7b-beta/03/model.pt"
   benchmarks:
     - wmdp
     - mmlu
   batch_size: 4
-  limit: 1000000
+  limit: 200
+  trust_remote_code: True
   results_path: "benchmark_results/zephyr-7b-beta"

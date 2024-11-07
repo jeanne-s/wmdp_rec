@@ -2,7 +2,7 @@ import argparse
 import torch
 from transformers import AdamW, AutoTokenizer
 import tqdm as tqdm
-from dataset import JSONLDataset
+from dataset import JSONLDataset, WikitextDataset
 from model import Model
 from utils import load_yaml_config
 import copy
@@ -86,11 +86,17 @@ class BaseRMU:
     def setup_datasets(self):
         retain_datasets = []
         for dataset_id, retain_dataset in enumerate(self.args.retain_dataset_list):
-            retain_datasets.append(
-                JSONLDataset(dataset_name=retain_dataset,
-                             tokenizer=self.tokenizer,
-                             batch_size=self.args.batch_size)
-            )
+            if retain_dataset.endswith('.jsonl'):
+                retain_datasets.append(
+                    JSONLDataset(dataset_name=retain_dataset,
+                                 tokenizer=self.tokenizer,
+                                 batch_size=self.args.batch_size)
+                )
+            else: # The retain dataset is wikitext
+                retain_datasets.append(
+                    WikitextDataset(tokenizer=self.tokenizer,
+                                    batch_size=self.args.batch_size)
+                )
 
         forget_datasets = []
         for dataset_id, forget_dataset_name in enumerate(self.args.forget_dataset_list):
@@ -100,8 +106,7 @@ class BaseRMU:
                              batch_size=self.args.batch_size)
             )
 
-        # If the length of retain_datasets is smaller than forget_datasets, we have to extend it for the 
-        # finetuning loop to function
+        # If the length of retain_datasets is smaller than forget_datasets, we have to extend it for the finetuning loop to function
         if len(retain_datasets) < len(forget_datasets):
             retain_datasets *= (len(forget_datasets) // len(retain_datasets))  # Repeat the list
             retain_datasets += retain_datasets[:len(forget_datasets) % len(retain_datasets)]  # Add remaining items if needed
@@ -138,7 +143,7 @@ class BaseRMU:
         updated_model_activations = self.updated_model.forward(input_ids=x_retain, 
                                                                layer_id=self.args.forget_layer_id,
                                                                no_grad=False).to(self.device, 
-                                                                                  dtype=self.torch_dtype)
+                                                                                 dtype=self.torch_dtype)
         frozen_model_activations = self.frozen_model.forward(input_ids=x_retain,
                                                              layer_id=self.args.forget_layer_id, 
                                                              no_grad=True).to(self.device, 
@@ -172,7 +177,7 @@ class BaseRMU:
                     self.optimizer.zero_grad()
                     full_loss.backward()
                     self.optimizer.step()
-                    print(f"Step {batch_id}: full_loss={full_loss.item():.5g}, forget_loss={l_forget.item():.5g}, retain_loss={l_retain.item():.5g}")
+                    print(f"Step {batch_id}/{self.args.num_batches}: full_loss={full_loss.item():.5g}, forget_loss={l_forget.item():.5g}, retain_loss={l_retain.item():.5g}")
 
         self.updated_model.save_model(path=self.args.updated_model_path, config_path=self.args.config_file)
         return    
