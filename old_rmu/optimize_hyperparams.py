@@ -247,8 +247,8 @@ def objective(trial):
         logger.info("Calculating objective value...")
         baseline_mmlu = 0.45
         mmlu_penalty = max(0, baseline_mmlu - results['mmlu']) * 2.0
-        # Invert wmdp_bio since we want to minimize it
-        objective_value = -results['wmdp_bio'] + mmlu_penalty
+        # We want to minimize wmdp_bio directly (no negative sign needed)
+        objective_value = results['wmdp_bio'] + mmlu_penalty
         logger.info(f"Calculated objective value: {objective_value}")
         
         # Store metrics

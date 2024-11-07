@@ -21,12 +21,12 @@ def load_existing_trials():
             with open(trial_dir / "results.json", "r") as f:
                 results = json.load(f)
                 
-            # Calculate objective value (same as in original script)
+            # Calculate objective value (matching optimize_hyperparams.py)
             baseline_mmlu = 0.45
-            mmlu_score = results.get('mmlu', {}).get('acc,none', 0.0)
-            wmdp_bio_score = results.get('wmdp_bio', {}).get('acc,none', 0.0)
+            mmlu_score = results.get('results', {}).get('mmlu', {}).get('acc,none', 0.0)
+            wmdp_bio_score = results.get('results', {}).get('wmdp_bio', {}).get('acc,none', 0.0)
             mmlu_penalty = max(0, baseline_mmlu - mmlu_score) * 2.0
-            objective_value = wmdp_bio_score + mmlu_penalty
+            objective_value = wmdp_bio_score + mmlu_penalty  # Removed negative sign
             
             # Create trial-like object
             trial_info = {
@@ -94,6 +94,31 @@ def create_visualizations(trials):
     trial_numbers = [t['number'] for t in trials]
     values = [t['value'] for t in trials]
     
+    # Add WMDP Bio and MMLU scores from results.json
+    wmdp_bio_scores = []
+    mmlu_scores = []
+    print("\nParsing results for each trial:")
+    for t in trials:
+        trial_dir = f"models/llama_opt_trial_{t['number']}"
+        results_file = os.path.join(trial_dir, "results.json")
+        
+        print(f"\nTrial {t['number']}:")
+        if os.path.exists(results_file):
+            with open(results_file) as f:
+                results = json.load(f)
+            wmdp_bio_score = results['results']['wmdp_bio']['acc,none']
+            mmlu_score = results['results']['mmlu']['acc,none']
+            print(f"WMDP Bio score: {wmdp_bio_score}")
+            print(f"MMLU score: {mmlu_score}")
+        else:
+            print(f"No results.json found for trial {t['number']}")
+            wmdp_bio_score = 0
+            mmlu_score = 0
+            
+        wmdp_bio_scores.append(wmdp_bio_score)
+        mmlu_scores.append(mmlu_score)
+    
+    # Create combined plot with all metrics
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=trial_numbers,
@@ -101,10 +126,28 @@ def create_visualizations(trials):
         mode='lines+markers',
         name='Objective Value'
     ))
+    fig.add_trace(go.Scatter(
+        x=trial_numbers,
+        y=wmdp_bio_scores,
+        mode='lines+markers',
+        name='WMDP Bio Accuracy'
+    ))
+    fig.add_trace(go.Scatter(
+        x=trial_numbers,
+        y=mmlu_scores,
+        mode='lines+markers',
+        name='MMLU Accuracy'
+    ))
     fig.update_layout(
         title="Optimization History",
         xaxis_title="Trial Number",
-        yaxis_title="Objective Value"
+        yaxis_title="Score",
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        )
     )
     pio.write_image(fig, "partial_optimization_results/optimization_history.png")
     
