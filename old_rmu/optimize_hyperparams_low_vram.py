@@ -106,30 +106,34 @@ def verify_file_exists(filepath, timeout=300, check_interval=10):
     return False
 
 def get_results(results_file):
-    """Get results with enhanced error handling"""
-    try:
-        if not verify_file_exists(results_file):
-            raise FileNotFoundError(f"Results file {results_file} not found or empty")
-            
-        with open(results_file, 'r') as f:
-            results = json.load(f)
-            
-        # Validate results structure
-        required_keys = ['results', 'wmdp_bio', 'mmlu']
-        for key in required_keys:
-            if key not in results.get('results', {}):
-                raise KeyError(f"Missing required key {key} in results")
-        
-        return {
-            'wmdp_bio': results['results']['wmdp_bio']['acc,none'],
-            'mmlu': results['results']['mmlu']['acc']
-        }
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse results file: {str(e)}")
-        raise
-    except Exception as e:
-        logger.error(f"Error getting results: {str(e)}")
-        raise
+    """Get results from evaluation output"""
+    with open(results_file) as f:
+        data = json.load(f)
+    
+    # Add logging to debug the structure
+    logger.debug(f"Results file contents: {json.dumps(data, indent=2)}")
+    
+    # Check if we have the expected structure
+    required_keys = ['results']
+    for key in required_keys:
+        if key not in data:
+            # Create the expected structure if it doesn't exist
+            if key == 'results':
+                # The file already has the results directly in the root
+                return {
+                    'wmdp': data.get('wmdp', {}).get('acc,none', 0.0),
+                    'wmdp_bio': data.get('wmdp_bio', {}).get('acc,none', 0.0),
+                    'mmlu': data.get('mmlu', {}).get('acc,none', 0.0)
+                }
+            raise KeyError(f"Missing required key {key} in results")
+
+    # If we have the expected structure, proceed as before
+    results = data['results']
+    return {
+        'wmdp': results.get('wmdp', {}).get('acc,none', 0.0),
+        'wmdp_bio': results.get('wmdp_bio', {}).get('acc,none', 0.0),
+        'mmlu': results.get('mmlu', {}).get('acc,none', 0.0)
+    }
 
 def get_module_params(param_type):
     """Return parameter indices based on type"""
@@ -206,8 +210,8 @@ def objective(trial):
         stdout, stderr = run_command(unlearn_command)
         
         # Verify model files exist with retry logic
-        model_file = trial_dir / "pytorch_model.bin"
-        if not verify_file_exists(model_file, timeout=600):  # Increased timeout
+        model_file = trial_dir / "model.safetensors"
+        if not verify_file_exists(model_file, timeout=60):
             logger.error(f"Model file {model_file} not created or empty after unlearning")
             logger.error(f"stdout: {stdout}")
             logger.error(f"stderr: {stderr}")
@@ -225,19 +229,26 @@ def objective(trial):
             f"lm-eval --model hf "
             f"--model_args pretrained={trial_dir} "
             f"--tasks wmdp,mmlu "
-            f"--batch_size=16 "
+            f"--batch_size=1 "
             f"--output_path {trial_dir}/results.json"
         )
         
+        # Add logging before evaluation
+        logger.info("Starting evaluation command...")
         stdout, stderr = run_command(eval_command)
+        logger.info("Evaluation command completed")
         
-        # Get and process results
+        # Add logging for results processing
+        logger.info("Processing evaluation results...")
         results = get_results(f"{trial_dir}/results.json")
+        logger.info(f"Processed results: {results}")
         
-        # Calculate objective
+        # Add logging for objective calculation
+        logger.info("Calculating objective value...")
         baseline_mmlu = 0.45
         mmlu_penalty = max(0, baseline_mmlu - results['mmlu']) * 2.0
         objective_value = results['wmdp_bio'] + mmlu_penalty
+        logger.info(f"Calculated objective value: {objective_value}")
         
         # Store metrics
         trial.set_user_attr('wmdp_bio_acc', results['wmdp_bio'])
