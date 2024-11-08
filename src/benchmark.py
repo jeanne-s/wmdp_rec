@@ -18,7 +18,7 @@ class BenchmarkModels:
         self.args = args
         self.results_path = args.results_path if hasattr(args, 'results_path') else os.path.join("benchmark_results", self.args.model_name.split("/")[-1])
         self.current_subfolder = None
-        self.optimization = hasattr(args, 'optimization') and args.optimization
+        # self.optimization = hasattr(args, 'optimization') and args.optimization
 
     def benchmark(self, model_name: str) -> Dict:
         results = lm_eval.simple_evaluate(
@@ -28,7 +28,9 @@ class BenchmarkModels:
             log_samples=False,
             batch_size=self.args.batch_size,
             limit=self.args.limit,
-            device=self.args.device
+            device=self.args.device,
+            cache_requests=True,
+            use_cache=os.path.join(os.path.dirname(os.path.dirname(self.args.unlearned_model)), "eval_cache")
         )
         results['results']['model_name'] = model_name
         return results
