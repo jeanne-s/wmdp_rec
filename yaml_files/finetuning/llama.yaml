@@ -2,19 +2,20 @@ args:
   model_name: "meta-llama/Llama-3.2-1B-Instruct"
   num_epochs: 1 
   num_batches: 150
-  alpha: 1200
+  batch_size: 4
   forget_dataset_list:
     - "bio-forget-corpus.jsonl"
   retain_dataset_list: 
-    - "bio-retain-corpus.jsonl"
+    - "wikitext"
   learning_rate: 5e-5
-  steering_coefficient: 6.5
-  alpha: 1200.0
-  forget_layer_id: 7
+  steering_coefficient: 53.4
+  alpha: 1883.2
+  forget_layer_id: 6
   optimizer_param_layer_id: 
-    - 6
+    - 3
   update_layer_ids:
+    - 4
     - 5
     - 6
-    - 7
   updated_model_path: "models/"
+  seed: 40

@@ -19,3 +19,6 @@ args:
     - 6
     - 7
   updated_model_path: "models/"
+  seed: 42
+# 44.8GB VRAM
+# 2min in A100 (not including model download and cached portions)

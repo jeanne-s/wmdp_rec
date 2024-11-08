@@ -19,3 +19,5 @@ args:
     - 14
     - 15
   updated_model_path: "models/"
+  seed: 42
+# >80GB VRAM

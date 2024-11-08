@@ -19,3 +19,4 @@ args:
     - 6
     - 7
   updated_model_path: "models/"
+  seed: 42

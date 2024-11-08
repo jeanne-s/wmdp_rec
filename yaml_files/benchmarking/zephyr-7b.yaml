@@ -1,6 +1,6 @@
 args:
   model_name: "HuggingFaceH4/zephyr-7b-beta"
-  unlearned_model: "models/HuggingFaceH4/zephyr-7b-beta/03/model.pt"
+  unlearned_model: "models/HuggingFaceH4/zephyr-7b-beta/00/model.pt"
   benchmarks:
     - wmdp
     - mmlu
@@ -8,3 +8,5 @@ args:
   limit: 100000
   trust_remote_code: True
   results_path: "benchmark_results/zephyr-7b-beta"
+# 21.0GB VRAM
+# 5.5min in A100 (not including reusable eval setup and cached portions)
