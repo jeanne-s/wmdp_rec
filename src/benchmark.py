@@ -16,9 +16,9 @@ class BenchmarkModels:
     
     def __init__(self, args):
         self.args = args
-        self.results_path = os.path.join("benchmark_results", self.args.model_name.split("/")[-1])
+        self.results_path = args.results_path if hasattr(args, 'results_path') else os.path.join("benchmark_results", self.args.model_name.split("/")[-1])
         self.current_subfolder = None
-
+        self.optimization = hasattr(args, 'optimization') and args.optimization
 
     def benchmark(self, model_name: str) -> Dict:
         results = lm_eval.simple_evaluate(

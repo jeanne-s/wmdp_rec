@@ -186,13 +186,17 @@ def create_trial_configs(trial, base_finetune_config, base_benchmark_config, tri
     with open(base_finetune_config) as f:
         finetune_config = yaml.safe_load(f)
     
+    model_name = finetune_config['args']['model_name']
+    model_name_safe = model_name.replace('/', '_')
+
+    # Update output path to use trial_dir directly
     finetune_config['args'].update({
         'steering_coefficient': params['steering_coeff'],
         'alpha': params['alpha'],
         'forget_layer_id': params['layer_id'],
         'optimizer_param_layer_id': [params['param_ids']],
         'update_layer_ids': list(range(max(0, params['layer_id'] - 2), params['layer_id'] + 1)),
-        'updated_model_path': str(trial_dir)  # Update the output path
+        'updated_model_path': str(trial_dir / f"{trial.number:02d}")  # Add trial number directly to trial_dir
     })
     
     finetune_config_path = trial_dir / "finetune_config.yaml"
@@ -203,9 +207,13 @@ def create_trial_configs(trial, base_finetune_config, base_benchmark_config, tri
     with open(base_benchmark_config) as f:
         benchmark_config = yaml.safe_load(f)
     
+    # Update paths to put results inside trial number folder
+    model_path = trial_dir / f"{trial.number:02d}" / "model.pt"
     benchmark_config['args'].update({
-        'unlearned_model': str(trial_dir),  # Point to the trial's model output
-        'results_path': str(trial_dir / "benchmark_results")
+        'model_name': model_name,
+        'unlearned_model': str(model_path),
+        'results_path': str(trial_dir / f"{trial.number:02d}" / "benchmark_results"),
+        'optimization': True
     })
     
     benchmark_config_path = trial_dir / "benchmark_config.yaml"
@@ -221,20 +229,20 @@ def objective(trial, args):
     try:
         # Adjust layer_id range based on model architecture
         params = {
-            'layer_id': trial.suggest_int('layer_id', 0, args.num_layers - 1),  # Use actual number of layers
+            'layer_id': trial.suggest_int('layer_id', 2, args.num_layers),  # Use actual number of layers
             'alpha': trial.suggest_float('alpha', 300.0, 2000.0),
             'steering_coeff': trial.suggest_float('steering_coeff', 1.0, 300.0, log=True),
-            'param_ids': trial.suggest_int('param_ids', 0, args.num_layers - 1),  # Also adjust this range
+            'param_ids': trial.suggest_int('param_ids', 0, 8),  # Also adjust this range
         }
         
         logger.info(f"Trial {trial.number} parameters: {json.dumps(params, indent=2)}")
         
-        # Create trial directory
+        # Create trial directory without redundant subfolder
         model_name_safe = args.model_name.replace('/', '_')
-        trial_dir = Path(f"models/{model_name_safe}_opt_trial_{trial.number}")
+        trial_dir = Path(f"models/{model_name_safe}")
         trial_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create both config files for this trial
+        # Create configs and run commands
         finetune_config, benchmark_config = create_trial_configs(
             trial, 
             args.finetune_config, 
@@ -243,21 +251,33 @@ def objective(trial, args):
             params
         )
         
-        # Run unlearning using rmu.py
+        # Run unlearning
         unlearn_command = f"python src/rmu.py --config_file {finetune_config}"
         stdout, stderr = run_command(unlearn_command)
         
-        # Verify model files exist
-        model_file = trial_dir / "pytorch_model.bin"
-        if not verify_file_exists(model_file):
+        # Verify model files exist - update path to use model_name_safe
+        model_file = trial_dir / f"{trial.number:02d}" / args.model_name / "00" / "model.pt" / "model.safetensors"
+        if not verify_file_exists(model_file, timeout=10):
             raise FileNotFoundError(f"Model file {model_file} not created")
         
-        # Run evaluation using benchmark.py
+        # Update benchmark config to use correct model path
+        with open(benchmark_config) as f:
+            benchmark_cfg = yaml.safe_load(f)
+        benchmark_cfg['args']['unlearned_model'] = str(model_file.parent)  # Point to the model.pt directory
+        with open(benchmark_config, 'w') as f:
+            yaml.dump(benchmark_cfg, f)
+        
+        # Run evaluation
         eval_command = f"python src/benchmark.py --config_file {benchmark_config} --device cuda"
         stdout, stderr = run_command(eval_command)
         
-        # Process results
-        results_file = trial_dir / "benchmark_results" / "00" / "unlearned_model_eval.json"
+        # Update results file path to be inside trial folder
+        results_file = trial_dir / f"{trial.number:02d}" / "benchmark_results" / "00" / "unlearned_model_eval.json"
+        
+        # Add additional verification for results file
+        if not verify_file_exists(results_file, timeout=10):
+            raise FileNotFoundError(f"Results file {results_file} not created")
+        
         results = get_results(results_file)
         
         # Calculate objective value
@@ -277,9 +297,9 @@ def objective(trial, args):
         
     except Exception as e:
         logger.error(f"Trial {trial.number} failed: {str(e)}", exc_info=True)
-        if trial_dir.exists():
-            import shutil
-            shutil.rmtree(trial_dir)
+        # if trial_dir.exists():
+        #     import shutil
+        #     shutil.rmtree(trial_dir)
         raise
 
 def main():

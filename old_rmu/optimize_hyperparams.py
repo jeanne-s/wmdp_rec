@@ -5,6 +5,7 @@ import os
 import numpy as np
 import logging
 import time
+import argparse
 from pathlib import Path
 from transformers import AutoConfig
 
@@ -18,6 +19,16 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Optimize hyperparameters for model unlearning')
+    parser.add_argument('--model_name', type=str, default="meta-llama/Llama-3.2-1B-Instruct",
+                      help='Name or path of the model to optimize')
+    parser.add_argument('--seed', type=int, default=42,
+                      help='Random seed for reproducibility')
+    parser.add_argument('--n_trials', type=int, default=100,
+                      help='Number of optimization trials to run')
+    return parser.parse_args()
 
 def run_command(command, timeout=7200):
     """Run command with enhanced error handling, logging, and real-time output"""
@@ -135,58 +146,48 @@ def get_results(results_file):
         'mmlu': results.get('mmlu', {}).get('acc,none', 0.0)
     }
 
-def get_module_params(param_type):
-    """Return parameter indices based on type"""
-    param_indices = {
-        "mlp": "4,5,6,7",
-        "attention": "0,1,2,3",
-        "both": "0,1,2,3,4,5,6,7"
-    }
-    
-    if param_type not in param_indices:
+def get_module_params(param_type, layer_id):
+    """Return parameter indices based on type and layer"""
+    if param_type not in ["mlp", "attention", "both"]:
         logger.error(f"Invalid param_type: {param_type}")
         raise ValueError(f"Invalid param_type: {param_type}")
-        
-    return param_indices[param_type]
+    
+    return str(layer_id)
 
-def objective(trial):
+def objective(trial, args):
     trial_start_time = time.time()
     logger.info(f"\nStarting trial {trial.number}")
     
     try:
         # Simplified hyperparameter search space
         params = {
-            'layer_id': trial.suggest_int('layer_id', 0, 15),
-            'num_batches': 10,  # Fixed value
+            'layer_id': trial.suggest_int('layer_id', 2, 15),  # Updated range
+            'num_batches': 150,  # Updated value
             'alpha': trial.suggest_float('alpha', 300.0, 2000.0),
             'steering_coeff': trial.suggest_float('steering_coeff', 1.0, 300.0, log=True),
-            'lr': trial.suggest_float('lr', 1e-5, 1e-4, log=True),
-            'batch_size': 8,  # Fixed value - different from low_vram
+            'lr': 5e-5,  # Fixed value
+            'batch_size': 8,  # Keep GPU batch size
             'module_type': 'mlp',  # Fixed value
-            'window_size': trial.suggest_int('window_size', 1, 3),
+            'param_ids': trial.suggest_int('param_ids', 0, 8),  # New parameter
         }
         
         logger.info(f"Trial {trial.number} parameters: {json.dumps(params, indent=2)}")
         
         # Create trial directory
-        trial_dir = Path(f"models/llama_opt_trial_{trial.number}")
+        model_name_safe = args.model_name.replace('/', '_')
+        trial_dir = Path(f"models/{model_name_safe}_opt_trial_{trial.number}")
         trial_dir.mkdir(parents=True, exist_ok=True)
         
         # Save trial parameters
         with open(trial_dir / "params.json", 'w') as f:
             json.dump(params, f, indent=2)
         
-        # Construct layer IDs with bounds checking
-        if params['window_size'] == 1:
-            layer_ids = str(params['layer_id'])
-        else:
-            start_layer = max(0, params['layer_id'] - params['window_size'] + 1)
-            end_layer = min(15, params['layer_id'] + 1)
-            layers = range(start_layer, end_layer)
-            layer_ids = ','.join(map(str, layers))
+        # Updated layer selection logic
+        start_layer = max(0, params['layer_id'] - 2)
+        layer_ids = ','.join(str(i) for i in range(start_layer, params['layer_id'] + 1))
         
         # Get parameter indices
-        param_ids = get_module_params(params['module_type'])
+        param_ids = params['param_ids']
         
         # Construct and run unlearn command
         unlearn_command = (
@@ -198,10 +199,10 @@ def objective(trial):
             f"--steering_coeffs {params['steering_coeff']} "
             f"--alpha {params['alpha']} "
             f"--lr {params['lr']} "
-            f"--seed 42 "
+            f"--seed {args.seed} "
             f"--output_dir {trial_dir} "
-            f"--model meta-llama/Llama-3.2-1B-Instruct "
-            f"--device cuda "  # Different from low_vram
+            f"--model {args.model_name} "
+            f"--device cuda "
             f"--layer_id {params['layer_id']} "
             f"--layer_ids {layer_ids} "
             f"--param_ids {param_ids}"
@@ -230,6 +231,7 @@ def objective(trial):
             f"--model_args pretrained={trial_dir} "
             f"--tasks wmdp,mmlu "
             f"--batch_size=8 "  # Keep GPU batch size
+            f"--trust_remote_code "
             f"--output_path {trial_dir}/results.json"
         )
         
@@ -272,7 +274,11 @@ def objective(trial):
         raise
 
 def main():
-    study_name = "llama_unlearning_optimization"
+    args = parse_args()
+    
+    # Use model name in study name
+    model_name_safe = args.model_name.replace('/', '_')
+    study_name = f"{model_name_safe}_unlearning_optimization"
     storage_name = f"sqlite:///{study_name}.db"
     
     # Add custom pruner to stop unpromising trials early
@@ -294,10 +300,10 @@ def main():
     study.sampler = optuna.samplers.TPESampler(
         n_startup_trials=10,
         multivariate=True,
-        seed=42
+        seed=args.seed
     )
     
-    study.optimize(objective, n_trials=10)
+    study.optimize(lambda trial: objective(trial, args), n_trials=args.n_trials)
     
     # Save and visualize results
     save_results(study)
