@@ -7,3 +7,4 @@ optimization.log
 partial_optimization_results/
 optimization_results/
 .env
+benchmark_results/
