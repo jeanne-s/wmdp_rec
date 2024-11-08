@@ -1,6 +1,7 @@
 import argparse
 import torch
-from transformers import AdamW, AutoTokenizer
+from torch.optim import AdamW
+from transformers import AutoTokenizer
 import tqdm as tqdm
 from dataset import JSONLDataset, WikitextDataset
 from model import Model
@@ -8,6 +9,9 @@ from utils import load_yaml_config
 import copy
 from dotenv import load_dotenv
 load_dotenv()
+from logger_config import setup_logger
+
+logger = setup_logger()
 
 
 class BaseRMU: 
@@ -22,7 +26,16 @@ class BaseRMU:
         """
         SEED = self.args.seed
         torch.manual_seed(SEED)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = getattr(self.args, 'device', 'cuda')
+        if device == 'cuda':
+            cuda_available = torch.cuda.is_available()
+            if not cuda_available:
+                logger.warning("CUDA is not available. Using CPU instead.")
+            self.device = torch.device(device if cuda_available else "cpu")
+        else:
+            self.device = torch.device(device)
+        logger.info(f"Using device: {self.device}")
+        #print(f"Using device: {self.device}")
         self.torch_dtype = torch.bfloat16
         self.tokenizer = self.load_tokenizer()
         self.updated_model, self.frozen_model = self.load_models()
@@ -46,7 +59,8 @@ class BaseRMU:
     def load_models(self):
         # Load a single instance of the model
         updated_model = Model(model_name=self.args.model_name,
-                              torch_dtype=self.torch_dtype)
+                             torch_dtype=self.torch_dtype,
+                             device=self.device)
 
         # Initially freeze all parameters
         for param in updated_model.model.parameters():
@@ -131,16 +145,28 @@ class BaseRMU:
         Args:
             x_forget (torch.Tensor): The input tokens.
         """ 
-        updated_model_activations = self.updated_model.forward(input_ids=x_forget, 
-                                                               layer_id=self.args.forget_layer_id,
-                                                               no_grad=False).to(self.device, 
-                                                                                 dtype=self.torch_dtype)
-
-        # Ensure the control_vector is broadcastable to the shape of updated_model_activations
+        # Ensure inputs are on the correct device
+        x_forget = x_forget.to(self.device)
+        control_vector = control_vector.to(self.device)
+        
+        updated_model_activations = self.updated_model.forward(
+            input_ids=x_forget, 
+            layer_id=self.args.forget_layer_id,
+            no_grad=False
+        )
+        
+        # Convert to float32 only when using CPU
+        if self.device.type == 'cpu':
+            updated_model_activations = updated_model_activations.to(dtype=torch.float32)
+            control_vector = control_vector.to(dtype=torch.float32)
+        
+        # Ensure the control_vector is broadcastable
         control_vector = control_vector.expand_as(updated_model_activations)
 
-        # By default the torch mse_loss function divides the sum of the output by the number of elements in it
-        return torch.nn.functional.mse_loss(updated_model_activations, control_vector * self.args.steering_coefficient)
+        return torch.nn.functional.mse_loss(
+            updated_model_activations, 
+            control_vector * self.args.steering_coefficient
+        )
     
 
     def retain_loss(self, 
@@ -149,16 +175,26 @@ class BaseRMU:
         Args:
             x_retain (torch.Tensor): The input tokens.
         """
-        updated_model_activations = self.updated_model.forward(input_ids=x_retain, 
-                                                               layer_id=self.args.forget_layer_id,
-                                                               no_grad=False).to(self.device, 
-                                                                                 dtype=self.torch_dtype)
-        frozen_model_activations = self.frozen_model.forward(input_ids=x_retain,
-                                                             layer_id=self.args.forget_layer_id, 
-                                                             no_grad=True).to(self.device, 
-                                                                              dtype=self.torch_dtype)
+        # Ensure input is on the correct device
+        x_retain = x_retain.to(self.device)
+        
+        updated_model_activations = self.updated_model.forward(
+            input_ids=x_retain, 
+            layer_id=self.args.forget_layer_id,
+            no_grad=False
+        )
+        
+        frozen_model_activations = self.frozen_model.forward(
+            input_ids=x_retain,
+            layer_id=self.args.forget_layer_id, 
+            no_grad=True
+        )
+        
+        # Convert to float32 only when using CPU
+        if self.device.type == 'cpu':
+            updated_model_activations = updated_model_activations.to(dtype=torch.float32)
+            frozen_model_activations = frozen_model_activations.to(dtype=torch.float32)
 
-        # By default the torch mse_loss function divides the sum of the output by the number of elements in it
         return torch.nn.functional.mse_loss(updated_model_activations, frozen_model_activations)
 
 

@@ -9,17 +9,11 @@ import argparse
 from pathlib import Path
 from transformers import AutoConfig
 import yaml
+from .logger_config import setup_logger
+import threading
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('optimization.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Replace existing logging setup with shared configuration
+logger = setup_logger()
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Optimize hyperparameters for model unlearning')
@@ -68,51 +62,62 @@ def run_command(command, timeout=7200):
             stderr=subprocess.PIPE,
             shell=True,
             text=True,
-            bufsize=1,  # Line buffered
+            bufsize=1,
             universal_newlines=True
         )
         
         stdout_lines = []
         stderr_lines = []
         
-        # Function to handle output streams
         def handle_output(pipe, lines):
-            for line in iter(pipe.readline, ''):
-                print(line, end='')  # Print in real-time
-                lines.append(line)
+            current_line = ''
+            last_line_length = 0
+            
+            while True:
+                char = pipe.read(1)
+                if not char:
+                    break
+                
+                if char == '\r':
+                    # Clear the current line before printing new content
+                    if last_line_length > 0:
+                        print('\r' + ' ' * last_line_length + '\r', end='', flush=True)
+                    current_line = ''
+                    last_line_length = 0
+                elif char == '\n':
+                    print(current_line + '\n', end='', flush=True)
+                    lines.append(current_line + '\n')
+                    current_line = ''
+                    last_line_length = 0
+                else:
+                    current_line += char
+                    print(char, end='', flush=True)
+                    last_line_length = len(current_line)
+            
+            if current_line:
+                print(current_line, end='', flush=True)
+                lines.append(current_line)
             pipe.close()
         
-        # Create threads to handle stdout and stderr
-        import threading
+        # Only handle stdout in real-time, collect stderr separately
         stdout_thread = threading.Thread(target=handle_output, args=(process.stdout, stdout_lines))
-        stderr_thread = threading.Thread(target=handle_output, args=(process.stderr, stderr_lines))
-        
-        # Start threads
         stdout_thread.start()
-        stderr_thread.start()
+        
+        # Collect stderr without printing
+        stderr = process.stderr.read()
+        stderr_lines = stderr.splitlines()
         
         # Wait for process to complete
         process.wait(timeout=timeout)
-        
-        # Wait for output threads to complete
         stdout_thread.join()
-        stderr_thread.join()
         
-        duration = time.time() - start_time
-        stdout = ''.join(stdout_lines)
-        stderr = ''.join(stderr_lines)
+        execution_time = time.time() - start_time
+        logger.info(f"Command completed in {execution_time:.2f} seconds")
         
-        logger.info(f"Command completed in {duration:.2f} seconds")
-        if stderr:
+        if stderr_lines:
             logger.warning(f"Command stderr: {stderr}")
         
-        if process.returncode != 0:
-            logger.error(f"Command failed with return code {process.returncode}")
-            logger.error(f"stdout: {stdout}")
-            logger.error(f"stderr: {stderr}")
-            raise subprocess.CalledProcessError(process.returncode, command)
-            
-        return stdout, stderr
+        return stdout_lines, stderr_lines, process.returncode
         
     except subprocess.TimeoutExpired:
         process.kill()
@@ -189,6 +194,9 @@ def create_trial_configs(trial, base_finetune_config, base_benchmark_config, tri
     model_name = finetune_config['args']['model_name']
     model_name_safe = model_name.replace('/', '_')
 
+    model_dir = trial_dir / model_name
+    model_dir.mkdir(parents=True, exist_ok=True)
+
     # Update output path to use trial_dir directly
     finetune_config['args'].update({
         'steering_coefficient': params['steering_coeff'],
@@ -196,10 +204,10 @@ def create_trial_configs(trial, base_finetune_config, base_benchmark_config, tri
         'forget_layer_id': params['layer_id'],
         'optimizer_param_layer_id': [params['param_ids']],
         'update_layer_ids': list(range(max(0, params['layer_id'] - 2), params['layer_id'] + 1)),
-        'updated_model_path': str(trial_dir / f"{trial.number:02d}")  # Add trial number directly to trial_dir
+        'updated_model_path': str(trial_dir)
     })
     
-    finetune_config_path = trial_dir / "finetune_config.yaml"
+    finetune_config_path = model_dir / "finetune_config.yaml"
     with open(finetune_config_path, 'w') as f:
         yaml.dump(finetune_config, f)
     
@@ -208,15 +216,14 @@ def create_trial_configs(trial, base_finetune_config, base_benchmark_config, tri
         benchmark_config = yaml.safe_load(f)
     
     # Update paths to put results inside trial number folder
-    model_path = trial_dir / f"{trial.number:02d}" / "model.pt"
+    model_path = model_dir / f"{trial.number:02d}" / "model.pt"
     benchmark_config['args'].update({
         'model_name': model_name,
         'unlearned_model': str(model_path),
-        'results_path': str(trial_dir / f"{trial.number:02d}" / "benchmark_results"),
-        'optimization': True
+        'results_path': str(model_dir / f"{trial.number:02d}")
     })
     
-    benchmark_config_path = trial_dir / "benchmark_config.yaml"
+    benchmark_config_path = model_dir / "benchmark_config.yaml"
     with open(benchmark_config_path, 'w') as f:
         yaml.dump(benchmark_config, f)
     
@@ -238,8 +245,8 @@ def objective(trial, args):
         logger.info(f"Trial {trial.number} parameters: {json.dumps(params, indent=2)}")
         
         # Create trial directory without redundant subfolder
-        model_name_safe = args.model_name.replace('/', '_')
-        trial_dir = Path(f"models/{model_name_safe}")
+        # model_name_safe = args.model_name.replace('/', '_')
+        trial_dir = Path("models")
         trial_dir.mkdir(parents=True, exist_ok=True)
         
         # Create configs and run commands
@@ -253,10 +260,12 @@ def objective(trial, args):
         
         # Run unlearning
         unlearn_command = f"python src/rmu.py --config_file {finetune_config}"
-        stdout, stderr = run_command(unlearn_command)
+        stdout, stderr, return_code = run_command(unlearn_command)
+
+        case_dir = trial_dir / args.model_name / f"{trial.number:02d}"
         
         # Verify model files exist - update path to use model_name_safe
-        model_file = trial_dir / f"{trial.number:02d}" / args.model_name / "00" / "model.pt" / "model.safetensors"
+        model_file = case_dir / "model.pt" / "model.safetensors"
         if not verify_file_exists(model_file, timeout=10):
             raise FileNotFoundError(f"Model file {model_file} not created")
         
@@ -269,10 +278,10 @@ def objective(trial, args):
         
         # Run evaluation
         eval_command = f"python src/benchmark.py --config_file {benchmark_config} --device cuda"
-        stdout, stderr = run_command(eval_command)
+        stdout, stderr, return_code = run_command(eval_command)
         
         # Update results file path to be inside trial folder
-        results_file = trial_dir / f"{trial.number:02d}" / "benchmark_results" / "00" / "unlearned_model_eval.json"
+        results_file = case_dir / "unlearned_model_eval.json"
         
         # Add additional verification for results file
         if not verify_file_exists(results_file, timeout=10):

@@ -11,31 +11,25 @@ class Model:
 
     def __init__(self, 
                  model_name: str,
-                 torch_dtype
+                 torch_dtype,
+                 device=None
     ):
         self.model_name = model_name
         self.torch_dtype = torch_dtype
+        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self.load_model()
         self.tokenizer = self.load_tokenizer()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
     def load_model(self):
         hf_token = os.getenv("HUGGINGFACE_TOKEN")
-        if torch.cuda.is_available():
-            return AutoModelForCausalLM.from_pretrained(
-                self.model_name, 
-                device_map='auto',
-                torch_dtype=self.torch_dtype,
-                use_auth_token=hf_token
-            )
-        else:
-            return AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                device_map='cpu',
-                torch_dtype=self.torch_dtype,
-                use_auth_token=hf_token
-            )
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_name, 
+            torch_dtype=self.torch_dtype,
+            use_auth_token=hf_token
+        )
+        # Move the entire model to the specified device
+        return model.to(self.device)
 
     
     def load_tokenizer(self):
@@ -73,9 +67,14 @@ class Model:
                 no_grad=True
     ):
         """Forward pass and returns the activations of the specified layer."""
+        # Ensure input_ids is on the correct device
+        input_ids = input_ids.to(self.device)
+        
         activations = []
         def hook_function(module, input, output):
-            activations.append(output[0].to(self.device) if isinstance(output, tuple) else output.to(self.device))
+            # Ensure output is on the correct device
+            act = output[0] if isinstance(output, tuple) else output
+            activations.append(act.to(self.device))
 
         hook_handle = self.get_layer(layer_id).register_forward_hook(hook_function)
         
@@ -87,7 +86,7 @@ class Model:
 
         hook_handle.remove()
         activations_tensor = torch.stack(activations)
-        return activations_tensor
+        return activations_tensor.to(self.device)  # Ensure final output is on correct device
     
 
     def save_model(self, 
