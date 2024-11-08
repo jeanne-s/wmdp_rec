@@ -20,6 +20,8 @@ class BaseRMU:
         """
         This method sets up the tokenizer and optimizer for the model.
         """
+        SEED = self.args.seed
+        torch.manual_seed(SEED)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.torch_dtype = torch.bfloat16
         self.tokenizer = self.load_tokenizer()
@@ -31,8 +33,13 @@ class BaseRMU:
 
     def load_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.args.model_name, 
-                                                  trust_remote_code_true=True, 
-                                                  use_fast=False)
+                                            trust_remote_code=True, 
+                                            use_fast=False)
+        
+        # Set padding token to be the same as EOS token if pad token is not set
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        
         return tokenizer 
 
 
@@ -192,6 +199,7 @@ if __name__ == "__main__":
     
     config = load_yaml_config(file_path=args.config_file)
     setattr(config, 'config_file', args.config_file)
+    
     rmu = BaseRMU(config)
     rmu.setup()
     rmu.finetune()
