@@ -135,19 +135,16 @@ def get_results(results_file):
         'mmlu': results.get('mmlu', {}).get('acc,none', 0.0)
     }
 
-def get_module_params(param_type):
-    """Return parameter indices based on type"""
-    param_indices = {
-        "mlp": "4,5,6,7",
-        "attention": "0,1,2,3",
-        "both": "0,1,2,3,4,5,6,7"
-    }
-    
-    if param_type not in param_indices:
+def get_module_params(param_type, layer_id):
+    """Return parameter indices based on type and layer"""
+    if param_type not in ["mlp", "attention", "both"]:
         logger.error(f"Invalid param_type: {param_type}")
         raise ValueError(f"Invalid param_type: {param_type}")
-        
-    return param_indices[param_type]
+    
+    # Return all three layer indices as a comma-separated string
+    start_layer = max(0, layer_id - 2)
+    #return ','.join(str(i) for i in range(start_layer, layer_id + 1))
+    return str(layer_id)
 
 def objective(trial):
     trial_start_time = time.time()
@@ -156,14 +153,14 @@ def objective(trial):
     try:
         # Simplified hyperparameter search space
         params = {
-            'layer_id': trial.suggest_int('layer_id', 0, 15),  # Keep the fixed range
-            'num_batches': 10,  # Fixed value
+            'layer_id': trial.suggest_int('layer_id', 5, 22),  # Keep the fixed range
+            'num_batches': 150,  # Fixed value
             'alpha': trial.suggest_float('alpha', 300.0, 2000.0),
             'steering_coeff': trial.suggest_float('steering_coeff', 1.0, 300.0, log=True),
-            'lr': trial.suggest_float('lr', 1e-5, 1e-4, log=True),
+            'lr': 5e-5,
             'batch_size': 1,  # Fixed value
             'module_type': 'mlp',  # Fixed value
-            'window_size': trial.suggest_int('window_size', 1, 3),
+            'param_ids': trial.suggest_int('param_ids', 0, 8),
         }
         
         logger.info(f"Trial {trial.number} parameters: {json.dumps(params, indent=2)}")
@@ -176,17 +173,12 @@ def objective(trial):
         with open(trial_dir / "params.json", 'w') as f:
             json.dump(params, f, indent=2)
         
-        # Construct layer IDs with bounds checking
-        if params['window_size'] == 1:
-            layer_ids = str(params['layer_id'])
-        else:
-            start_layer = max(0, params['layer_id'] - params['window_size'] + 1)
-            end_layer = min(15, params['layer_id'] + 1)
-            layers = range(start_layer, end_layer)
-            layer_ids = ','.join(map(str, layers))
+        # Construct layer IDs with new logic
+        start_layer = max(0, params['layer_id'] - 2)
+        layer_ids = ','.join(str(i) for i in range(start_layer, params['layer_id'] + 1))
         
-        # Get parameter indices
-        param_ids = get_module_params(params['module_type'])
+        # Get parameter indices - now includes all three layers
+        param_ids = params['param_ids']#get_module_params(params['module_type'], params['layer_id'])
         
         # Construct and run unlearn command
         unlearn_command = (
@@ -293,7 +285,7 @@ def main():
         seed=42
     )
     
-    study.optimize(objective, n_trials=10)
+    study.optimize(objective, n_trials=100)
     
     # Save and visualize results
     save_results(study)
