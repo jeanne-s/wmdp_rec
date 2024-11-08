@@ -3,6 +3,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import yaml
 import shutil
+from dotenv import load_dotenv
+load_dotenv()
+
 
 class Model:
 
@@ -18,17 +21,20 @@ class Model:
 
 
     def load_model(self):
+        hf_token = os.getenv("HUGGINGFACE_TOKEN")
         if torch.cuda.is_available():
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name, 
-                device_map='auto',  # 'auto' will use all available GPUs
-                torch_dtype=self.torch_dtype
+                device_map='auto',
+                torch_dtype=self.torch_dtype,
+                use_auth_token=hf_token
             )
         else:
             return AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 device_map='cpu',
-                torch_dtype=self.torch_dtype
+                torch_dtype=self.torch_dtype,
+                use_auth_token=hf_token
             )
 
     
@@ -39,7 +45,7 @@ class Model:
     def get_all_layers(self):
         if hasattr(self.model, 'transformer'):  # For models like GPT-2
             layers = self.model.transformer.h
-        elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For specific models (e.g., zephyr, Mixtral)
+        elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For other models (e.g., zephyr, Yi, Mixtral)
             layers = self.model.model.layers
         else:
             raise ValueError(f"Unknown architecture for model {self.model_name}. Unable to find layers.")

@@ -1,0 +1,10 @@
+args:
+  model_name: "mistralai/Mixtral-8x7B-Instruct-v0.1"
+  unlearned_model: "models/mistralai/Mixtral-8x7B-Instruct-v0.1/00/model.pt"
+  benchmarks:
+    - wmdp
+    - mmlu
+  batch_size: 2
+  limit: 200
+  trust_remote_code: True
+  results_path: "benchmark_results/Mixtral-8x7B-Instruct-v0.1"

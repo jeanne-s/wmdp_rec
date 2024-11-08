@@ -1,0 +1,10 @@
+args:
+  model_name: "01-ai/Yi-34B-Chat"
+  unlearned_model: "models/01-ai/Yi-34B-Chat/00/model.pt"
+  benchmarks:
+    - wmdp
+    - mmlu
+  batch_size: 2
+  limit: 200
+  trust_remote_code: True
+  results_path: "benchmark_results/Yi-34B-Chat"
