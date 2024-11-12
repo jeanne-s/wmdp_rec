@@ -5,7 +5,7 @@ args:
     - wmdp
     - mmlu
   batch_size: 5
-  limit: 100000
+  limit: 100
   trust_remote_code: True
   results_path: "benchmark_results/zephyr-7b-beta"
 # 21.0GB VRAM
