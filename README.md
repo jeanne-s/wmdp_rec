@@ -1,8 +1,10 @@
 # The WMDP Benchmark: Measuring and Reducing Malicious Use With Unlearning 
 
-Replication of the [WMDP paper](https://www.wmdp.ai/).
+Replication of the [WMDP paper](https://www.wmdp.ai/) for the [Research Engineers Club](https://www.safeailondon.org/reng-club).
 
-# RMU Script 
+The WMDP paper introduces a benchmark that serves as a proxy for measuring hazardous knowledge in biosecurity, cybersecurity, and chemical security within LLMs, as well as an unlearning method through finetuning to remove that knowledge while preserving general capabilities.
+
+# Representation Misdirection for Unlearning (RMU) Script 
 This code implements the RMU algorithm for model unlearning.
 
 Basic usage:
@@ -80,3 +82,37 @@ python src/benchmark.py --config_file yaml_files/benchmarking/your_config.yaml
 
 1. `accuracy_comparison.png`: Compares base and unlearned model performance across WMDP and MMLU tasks
 2. `mmlu_subcategories.png`: Detailed comparison across MMLU subcategories
+
+## Installation
+
+1. Requirements:
+- Python 3.12+
+- CUDA-capable GPU (recommended)
+- 16GB+ RAM
+- 50GB+ disk space
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+## License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+
+## Citation
+
+If you use this code in your research, please cite:
+```bibtex
+@misc{wmdp2024replication,
+  title={The WMDP Benchmark: Measuring and Reducing Malicious Use With Unlearning - Paper Replication},
+  author={Research Engineers Club},
+  year={2024},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/jeanne-s/wmdp_rec}}
+}
+```
