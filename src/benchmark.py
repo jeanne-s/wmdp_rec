@@ -1,8 +1,19 @@
+"""
+Benchmark module for evaluating model performance.
+
+This module provides functionality to evaluate and compare the performance of base and 
+unlearned models across various benchmarks including WMDP and MMLU. It handles:
+- Model evaluation using lm-eval
+- Results storage and management
+- Performance visualization through plots
+- Comparative analysis of model performance
+"""
+
 import argparse
 import json
 import os
 import shutil
-from typing import Dict, List
+from typing import Dict, List, Optional, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,17 +21,42 @@ import lm_eval
 import torch
 
 from utils import load_yaml_config, CustomJSONEncoder
+from exceptions import ConfigurationError, BenchmarkError, ModelLoadError
 
 
 class BenchmarkModels:
-    
-    def __init__(self, args):
+    """
+    Main class for running model benchmarks and managing results.
+
+    This class handles the complete benchmarking pipeline including:
+    - Running evaluations on base and unlearned models
+    - Saving and loading benchmark results
+    - Generating comparison plots
+    - Managing result directories and versioning
+
+    Attributes:
+        args: Configuration arguments for benchmarking
+        results_path (str): Path to store benchmark results
+        current_subfolder (Optional[str]): Current results subfolder being used
+    """
+
+    def __init__(self, args) -> None:
         self.args = args
         self.results_path = args.results_path if hasattr(args, 'results_path') else os.path.join("benchmark_results", self.args.model_name.split("/")[-1])
-        self.current_subfolder = None
+        #self.current_subfolder: Optional[str] = None
+        self.current_subfolder = getattr(args, 'trial', None)
         # self.optimization = hasattr(args, 'optimization') and args.optimization
 
-    def benchmark(self, model_name: str) -> Dict:
+    def benchmark(self, model_name: str) -> Dict[str, Any]:
+        """
+        Run benchmark evaluation for a specific model.
+
+        Args:
+            model_name: Name or path of the model to evaluate
+
+        Returns:
+            Dictionary containing evaluation results with metrics for each task
+        """
         results = lm_eval.simple_evaluate(
             model="hf",
             model_args=f"pretrained={model_name},trust_remote_code={self.args.trust_remote_code}",
@@ -29,8 +65,7 @@ class BenchmarkModels:
             batch_size=self.args.batch_size,
             limit=self.args.limit,
             device=self.args.device,
-            cache_requests=True,
-            use_cache=os.path.join(os.path.dirname(os.path.dirname(self.args.unlearned_model)), "eval_cache")
+            cache_requests=None
         )
         results['results']['model_name'] = model_name
         return results
@@ -88,18 +123,33 @@ class BenchmarkModels:
 
 
     def load_results(self) -> tuple[Dict, Dict]:
-        if self.current_subfolder is None:
-            self.current_subfolder = max([f for f in os.listdir(self.results_path) if os.path.isdir(os.path.join(self.results_path, f)) and f.isdigit()])
-        
-        base_path = os.path.join(self.results_path, "base_model_eval.json")
-        unlearned_path = os.path.join(self.results_path, self.current_subfolder, "unlearned_model_eval.json")
+        try:
+            if self.current_subfolder is None:
+                subfolders = [f for f in os.listdir(self.results_path) 
+                             if os.path.isdir(os.path.join(self.results_path, f)) and f.isdigit()]
+                if not subfolders:
+                    raise BenchmarkError("No result folders found")
+                self.current_subfolder = max(subfolders)
+            
+            base_path = os.path.join(self.results_path, "base_model_eval.json")
+            unlearned_path = os.path.join(self.results_path, self.current_subfolder, "unlearned_model_eval.json")
 
-        with open(base_path, 'r') as f:
-            base_results = json.load(f)
-        with open(unlearned_path, 'r') as f:
-            unlearned_results = json.load(f)
+            if not os.path.exists(base_path):
+                raise BenchmarkError(f"Base model results not found at {base_path}")
+            if not os.path.exists(unlearned_path):
+                raise BenchmarkError(f"Unlearned model results not found at {unlearned_path}")
 
-        return base_results, unlearned_results
+            try:
+                with open(base_path, 'r') as f:
+                    base_results = json.load(f)
+                with open(unlearned_path, 'r') as f:
+                    unlearned_results = json.load(f)
+            except json.JSONDecodeError as e:
+                raise BenchmarkError(f"Invalid JSON in results file: {str(e)}")
+
+            return base_results, unlearned_results
+        except Exception as e:
+            raise BenchmarkError(f"Failed to load results: {str(e)}") from e
 
 
     def plot_results(self,
@@ -146,13 +196,28 @@ class BenchmarkModels:
                                  plot_title="MMLU Accuracy after Unlearning")
 
 
-    def create_plot(self, 
-                    scores: Dict[str, List[float]], 
-                    display_names: List[str], 
-                    model_name: str,
-                    plot_filename: str = "accuracy_comparison.png",
-                    plot_title: str = "WMDP and MMLU Accuracy After Unlearning"
-    ):
+    def create_plot(
+        self, 
+        scores: Dict[str, List[float]], 
+        display_names: List[str], 
+        model_name: str,
+        plot_filename: str = "accuracy_comparison.png",
+        plot_title: str = "WMDP and MMLU Accuracy After Unlearning"
+    ) -> None:
+        """
+        Create and save a bar plot comparing model performances.
+
+        Args:
+            scores: Dictionary mapping model types to lists of accuracy scores
+            display_names: List of benchmark names for x-axis labels
+            model_name: Name of the model being evaluated
+            plot_filename: Name of the output plot file
+            plot_title: Title to display on the plot
+
+        Note:
+            The plot is saved in the current results subfolder and also displayed
+            using plt.show()
+        """
         fig, ax = plt.subplots(figsize=(10, 6))
         x = np.arange(len(display_names))
         width = 0.35
@@ -198,31 +263,41 @@ class BenchmarkModels:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Model evaluation.")
-    parser.add_argument("--config_file", type=str, required=True, help="Path to the YAML config file")
-    parser.add_argument("--device", type=str, default="cuda", help="Device to use for evaluation (default: cuda)")
-    parser.add_argument("--plot_only", action="store_true", help="Only plot results without running evaluation")
-    parser.add_argument("--rerun_base", action="store_true", help="Re-run base model evaluation even if it exists")
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser(description="Model evaluation.")
+        parser.add_argument("--config_file", type=str, required=True, help="Path to the YAML config file")
+        parser.add_argument("--device", type=str, default="cuda", help="Device to use for evaluation (default: cuda)")
+        parser.add_argument("--plot_only", action="store_true", help="Only plot results without running evaluation")
+        parser.add_argument("--rerun_base", action="store_true", help="Re-run base model evaluation even if it exists")
+        args = parser.parse_args()
 
-    if args.device == "cuda" and not torch.cuda.is_available():
-        print("CUDA is not available. Using CPU instead.")
-        args.device = "cpu"
+        if not os.path.exists(args.config_file):
+            raise ConfigurationError(f"Config file not found: {args.config_file}")
 
-    config = load_yaml_config(file_path=args.config_file)
-    
-    for attr, value in vars(args).items():
-        setattr(config, attr, value)
+        if args.device == "cuda" and not torch.cuda.is_available():
+            print("CUDA is not available. Using CPU instead.")
+            args.device = "cpu"
 
-    benchmarker = BenchmarkModels(config)
-    
-    if args.plot_only:
-        benchmarker.plot_results()
-        benchmarker.plot_mmlu_subcategories()
-    else:
-        benchmarker.run_benchmark()
-        benchmarker.plot_results()
-        benchmarker.plot_mmlu_subcategories()
+        config = load_yaml_config(file_path=args.config_file)
+        for attr, value in vars(args).items():
+            setattr(config, attr, value)
+
+        benchmarker = BenchmarkModels(config)
+        
+        if args.plot_only:
+            benchmarker.plot_results()
+            benchmarker.plot_mmlu_subcategories()
+        else:
+            benchmarker.run_benchmark()
+            benchmarker.plot_results()
+            benchmarker.plot_mmlu_subcategories()
+
+    except (ConfigurationError, BenchmarkError, ModelLoadError) as e:
+        print(f"Error: {str(e)}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

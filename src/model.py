@@ -1,27 +1,64 @@
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 import os
 import yaml
 import shutil
 from dotenv import load_dotenv
+from typing import Optional, Union, List, Dict, Any
+from pathlib import Path
+
 load_dotenv()
 
 
 class Model:
+    """
+    Wrapper class for managing language models.
 
-    def __init__(self, 
-                 model_name: str,
-                 torch_dtype,
-                 device=None
-    ):
+    This class provides a unified interface for loading, saving, and accessing
+    language models and their tokenizers. It handles device placement and 
+    configuration management.
+
+    Attributes:
+        model_name (str): Name or path of the model
+        device (str): Device to place the model on ('cuda' or 'cpu')
+        torch_dtype: Data type for model parameters
+        model (PreTrainedModel): Loaded model instance
+        tokenizer (PreTrainedTokenizer): Model's tokenizer
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        device: str = "cuda",
+        torch_dtype: Optional[torch.dtype] = None,
+        trust_remote_code: bool = False
+    ) -> None:
+        """
+        Initialize the model wrapper.
+
+        Args:
+            model_name: HuggingFace model name or path
+            device: Device to place model on
+            torch_dtype: Optional specific torch dtype for model
+            trust_remote_code: Whether to trust remote code in model loading
+
+        Raises:
+            ValueError: If device is 'cuda' but CUDA is not available
+        """
         self.model_name = model_name
-        self.torch_dtype = torch_dtype
-        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.load_model()
-        self.tokenizer = self.load_tokenizer()
+        self.device = device
+        self.torch_dtype = torch_dtype or torch.float16
+        self.trust_remote_code = trust_remote_code
+        self.model = self._load_model()
+        self.tokenizer = self._load_tokenizer()
 
+    def _load_model(self) -> PreTrainedModel:
+        """
+        Load model from HuggingFace hub with proper authentication and configuration.
 
-    def load_model(self):
+        Returns:
+            Loaded model instance placed on the specified device
+        """
         hf_token = os.getenv("HUGGINGFACE_TOKEN")
         model = AutoModelForCausalLM.from_pretrained(
             self.model_name, 
@@ -32,11 +69,17 @@ class Model:
         return model.to(self.device)
 
     
-    def load_tokenizer(self):
+    def _load_tokenizer(self) -> PreTrainedTokenizer:
+        """
+        Load and configure the appropriate tokenizer for the model.
+
+        Returns:
+            Configured tokenizer instance
+        """
         return AutoTokenizer.from_pretrained(self.model_name)
 
 
-    def get_all_layers(self):
+    def get_all_layers(self) -> List[torch.nn.Module]:
         if hasattr(self.model, 'transformer'):  # For models like GPT-2
             layers = self.model.transformer.h
         elif hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):  # For other models (e.g., zephyr, Yi, Mixtral)
@@ -46,8 +89,19 @@ class Model:
         return layers
 
 
-    def get_layer(self, layer_id):
-        """Returns the layer object given its layer index (layer_id)."""
+    def get_layer(self, layer_id: int) -> torch.nn.Module:
+        """
+        Get a specific layer from the model.
+
+        Args:
+            layer_id: Index of the desired layer
+
+        Returns:
+            The specified model layer
+
+        Raises:
+            IndexError: If layer_id is out of range
+        """
         layers = self.get_all_layers()
         if 0 <= layer_id < len(layers):
             return layers[layer_id]
@@ -55,7 +109,7 @@ class Model:
             raise IndexError(f"Layer ID {layer_id} is out of range. The model has {len(layers)} layers.")
 
         
-    def n_layers(self):
+    def n_layers(self) -> int:
         """Returns the number of layers in the model."""
         layers = self.get_all_layers()
         return len(layers)
@@ -65,7 +119,7 @@ class Model:
                 input_ids, 
                 layer_id: int,
                 no_grad=True
-    ):
+    ) -> torch.Tensor:
         """Forward pass and returns the activations of the specified layer."""
         # Ensure input_ids is on the correct device
         input_ids = input_ids.to(self.device)
@@ -86,21 +140,24 @@ class Model:
 
         hook_handle.remove()
         activations_tensor = torch.stack(activations)
-        return activations_tensor.to(self.device)  # Ensure final output is on correct device
+        return activations_tensor.to(self.device)  # Ensure final output is on the correct device
     
 
-    def save_model(self, 
-                   path: str,
-                   config_path: str = None
-    ):
+    def save_model(
+        self, 
+        path: Union[str, Path], 
+        config_path: str = None,
+        save_tokenizer: bool = True
+    ) -> None:
         """
-        Saves the model to the specified path. If a folder with the model's name already exists,
-        it creates a subfolder with an incremental number (e.g., 00, 01, etc.). The model is saved
-        in the subfolder along with a configuration file in YAML format.
+        Save the model and optionally its tokenizer.
 
         Args:
-            path (str): The base path where the model will be saved.
-            config_path (str): The path to the configuration file (YAML) used to run rmu.py.
+            path: Directory path to save the model
+            save_tokenizer: Whether to also save the tokenizer
+
+        Raises:
+            OSError: If saving fails due to permissions or disk space
         """
         model_dir = os.path.join(path, self.model_name)
 

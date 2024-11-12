@@ -10,8 +10,11 @@ import copy
 from dotenv import load_dotenv
 load_dotenv()
 from logger_config import setup_logger
+from typing import List, Optional, Union
+import logging
+from exceptions import ModelLoadError, ConfigurationError
 
-logger = setup_logger()
+logger = logging.getLogger(__name__)
 
 
 class BaseRMU: 
@@ -35,16 +38,15 @@ class BaseRMU:
         else:
             self.device = torch.device(device)
         logger.info(f"Using device: {self.device}")
-        #print(f"Using device: {self.device}")
         self.torch_dtype = torch.bfloat16
-        self.tokenizer = self.load_tokenizer()
-        self.updated_model, self.frozen_model = self.load_models()
-        self.optimizer = self.load_optimizer() 
-        self.control_vector_list = self.create_control_vector_list()
-        self.retain_datasets, self.forget_datasets = self.setup_datasets()
+        self.tokenizer = self._load_tokenizer()
+        self.updated_model, self.frozen_model = self._load_models()
+        self.optimizer = self._load_optimizer() 
+        self.control_vector_list = self._create_control_vector_list()
+        self.retain_datasets, self.forget_datasets = self._setup_datasets()
         
 
-    def load_tokenizer(self):
+    def _load_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.args.model_name, 
                                             trust_remote_code=True, 
                                             use_fast=False)
@@ -56,28 +58,36 @@ class BaseRMU:
         return tokenizer 
 
 
-    def load_models(self):
-        # Load a single instance of the model
-        updated_model = Model(model_name=self.args.model_name,
-                             torch_dtype=self.torch_dtype,
-                             device=self.device)
+    def _load_models(self):
+        try:
+            # Load a single instance of the model
+            updated_model = Model(model_name=self.args.model_name,
+                                torch_dtype=self.torch_dtype,
+                                device=self.device)
 
-        # Initially freeze all parameters
-        for param in updated_model.model.parameters():
-            param.requires_grad = False
+            # Initially freeze all parameters
+            for param in updated_model.model.parameters():
+                param.requires_grad = False
 
-        frozen_model = copy.deepcopy(updated_model)
+            frozen_model = copy.deepcopy(updated_model)
 
-        # Unfreeze only the layers specified in update_layer_ids for finetuning
-        for layer_id in self.args.update_layer_ids:
-            if 0 <= layer_id < updated_model.n_layers():
+            # Validate layer IDs
+            max_layers = updated_model.n_layers()
+            for layer_id in self.args.update_layer_ids:
+                if not 0 <= layer_id < max_layers:
+                    raise ConfigurationError(
+                        f"Invalid layer_id {layer_id}. Must be between 0 and {max_layers-1}"
+                    )
                 for param in updated_model.get_layer(layer_id).parameters():
                     param.requires_grad = True
 
-        return updated_model, frozen_model
+            return updated_model, frozen_model
+        
+        except Exception as e:
+            raise ModelLoadError(f"Failed to load models: {str(e)}") from e
 
 
-    def load_optimizer(self):
+    def _load_optimizer(self):
         optimizer_param_layer_id = set(self.args.optimizer_param_layer_id)
         params = [
             p
@@ -90,7 +100,7 @@ class BaseRMU:
         return optimizer
     
 
-    def create_control_vector_list(self):
+    def _create_control_vector_list(self):
         """ 
         Samples a unit vector with independent entries drawn uniformly at random from [0,1).
         Corresponds to u in the paper. One unit vector is created per forget dataset; 
@@ -106,7 +116,7 @@ class BaseRMU:
         return control_vector_list
 
     
-    def setup_datasets(self):
+    def _setup_datasets(self):
         retain_datasets = []
         for dataset_id, retain_dataset in enumerate(self.args.retain_dataset_list):
             if retain_dataset.endswith('.jsonl'):
@@ -224,7 +234,8 @@ class BaseRMU:
                     self.optimizer.step()
                     print(f"Step {batch_id}/{self.args.num_batches}: full_loss={full_loss.item():.5g}, forget_loss={l_forget.item():.5g}, retain_loss={l_retain.item():.5g}")
 
-        self.updated_model.save_model(path=self.args.updated_model_path, config_path=self.args.config_file)
+        self.updated_model.save_model(path=self.args.updated_model_path, 
+                                      config_path=self.args.config_file)
         return    
 
 
