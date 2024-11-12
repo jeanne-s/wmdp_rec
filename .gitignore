@@ -1,9 +1,9 @@
 data/*
 **/__pycache__/
 *.py[cod]
+*.db
+*.log
 models/
-llama_unlearning_optimization.db
-optimization.log
 partial_optimization_results/
 optimization_results/
 .env
