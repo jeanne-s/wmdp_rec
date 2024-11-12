@@ -1,5 +1,6 @@
 from typing import Dict, Tuple
 import lm_eval
+import os
 
 class BenchmarkRunner:
     def __init__(self, args):
@@ -14,7 +15,9 @@ class BenchmarkRunner:
             log_samples=False,
             batch_size=self.args.batch_size,
             limit=self.args.limit,
-            device=self.args.device
+            device=self.args.device,
+            cache_requests=True,
+            use_cache=os.path.join(os.path.dirname(os.path.dirname(self.args.unlearned_model)), "eval_cache")
         )
         results['results']['model_name'] = model_name
         return results
